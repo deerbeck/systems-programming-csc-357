@@ -2,7 +2,6 @@
 
 int main(int argc, char* argv[])
 {
-  printf("Hello People!\n");
-
+  printf("Hello World!\n");
   return 0;  
 }

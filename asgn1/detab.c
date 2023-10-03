@@ -8,44 +8,49 @@ to space to the next tab stop.*/
 
 int main(int argc, char *argv[])
 {
-  int c;
-  int col = 0;
-  int i = 0;
+    int c;
+    int col = 0;
+    int i = 0;
+    int buffer = 0;
 
-  while ((c=getchar()) != EOF)
-  {
+    while ((c=getchar()) != EOF)
+    {
 
-    switch(c)
-      {
-      case '\t':
-	for(i = 0; i < (TAB_WIDTH-col);i++)
-	  {
-	    putchar(' ');
-	  }
-	col = 0;
-	break;
+        switch(c)
+        {
+        case '\t':
+            buffer = (TAB_WIDTH-(col % TAB_WIDTH));
+            for(i = 0; i < buffer; i++)
+            {
+                putchar(' ');
+                col++;
+            }
+
+            break;
 
         case '\b':
-	  putchar(c);
-	  col--;
-	break;
-
+            putchar(c);
+            col--;
+            if(col < 0)
+            {
+                col = 0;
+            }
+            break;
         case '\n':
-	  putchar(c);
-	  col = 0;       
-	break;
+            col = 0;
+            putchar(c);
+            break;
 
-	case '\r':
-	  putchar(c);
-	  col = 0;     
-	break;
-	
-      default:
-	putchar(c);
-	col++;
-	if(col == 8) col = 0;
-	break;
-      }
-  }
-  return 0;
+        case '\r':
+            col = 0;
+            putchar(c);
+            break;
+
+        default:
+            putchar(c);
+            col++;
+            break;
+        }
+    }
+    return 0;
 }

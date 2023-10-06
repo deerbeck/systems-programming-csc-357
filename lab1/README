@@ -2,8 +2,8 @@ Johannes Hirschbeck (jhirs01)
 
 
 Questions:
-	-unix4
-	-manpage on "man" - I learned how to add search paths to the man command
-	-I choose emacs, simply because it was the first you suggested in the lab1 instructions :)
-	-The program is supposed to output "Hello World!" to the output stream - so far no problems encountered
+	1. unix4
+	2. manpage on "man" - I learned how to add search paths to the man command using the -M argument
+	3. I choose emacs, simply because it was the first you suggested in the lab1 instructions :). And I did not use any specific editor for linux before that.
+	4. The program is supposed to output "Hello World!" to the output stream - so far no problems encountered
 	

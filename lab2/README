@@ -1,0 +1,23 @@
+Johannes Hirschbeck (jhirsc01)
+
+
+
+Problems:
+	1.	-char *cp;
+		-char *ap[];
+		-int **pp;
+		
+	2. I don't know yet
+	
+	3. In the for loop the condition " p != '\0'" falsely checks if the
+	current address the pointer points to is the NULL character.
+	It does not check if the content at that address is the NULL Character.
+	What will happen when you execute it is that the for loop never stops
+	and accesses memmory that it is not allowed to access (But at least
+	it puts "Hello, world!\n" before that happens). Keyword
+	Segmentation fault.
+	One can fix it by dereferencing the pointer in the condition.
+	-> " *p != '\0'"
+	
+	4.
+		

@@ -3,11 +3,18 @@ Johannes Hirschbeck (jhirsc01)
 
 
 Problems:
-	1.	-char *cp;
-		-char *ap[];
-		-int **pp;
+	1.	(a)	char *cp;
+		(b)	char *ap;
+		(c)	int **pp;
 		
-	2. I don't know yet
+	2. In C it is possible to declare and initialize a pointer
+	to itself. But only if it is a void pointer. Becaue any other type
+	for example an int pointer would be an incompatible type beacause 
+	an int pointer expects to point at an int and not at a pointer that
+	points to an int. Void pointers however are not of any type and
+	can therefor point to themselves.
+	One would declare it as "void *pa = &pa;". 
+	But I don't think it is very useful.
 	
 	3. In the for loop the condition " p != '\0'" falsely checks if the
 	current address the pointer points to is the NULL character.
@@ -19,5 +26,21 @@ Problems:
 	One can fix it by dereferencing the pointer in the condition.
 	-> " *p != '\0'"
 	
-	4.
+	4.(a)	It is correct in the way, that the value of a variable
+		or expression of type array is the address of element zero
+		of the array.
+		The name of the array is therefore a synonym for the location
+		of the initial element.
+		pa = &a[0]; is equal to pa = a;
+		Pointer arithmetic can be used to access the elements of an
+		array. *(pa +i) is equal to a[i] and gives us thecontent of
+		the i-th element of the array.
+		-> An array index epression is equivalent to one written as
+		a pointer and offset.
+		
+	  (b)	A pointer is fundamentally different from an array because a 
+	  	pointer is a variable, so pa = a and pa++ are legal.
+	  	But an array name is not a variable -> constructions like
+	  	a = pa and a++ are illegal.
+		
 		

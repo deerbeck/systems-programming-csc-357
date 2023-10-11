@@ -1,0 +1,8 @@
+#include <stdio.h>
+
+char *read_long_line(FILE *file);
+
+int main(int argc, char *argv[])
+{
+  printf("Hello, World!\n");
+}

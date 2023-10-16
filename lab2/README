@@ -42,5 +42,27 @@ Problems:
 	  	pointer is a variable, so pa = a and pa++ are legal.
 	  	But an array name is not a variable -> constructions like
 	  	a = pa and a++ are illegal.
-		
+	  	
+	5. Q: In Section 1.7, the argument to perror is defined with the ISO C
+	attribute const, whereas the integer argument to strerror isn’t 
+	defined with this attribute. Why?
+	A: Keyword "Pass by Value" and "Pass by reference". As the argument
+	for perror is a pointer to the msg (pass by reference), perror could
+	modify the string the pointer points to. With const it is ensured
+	that perror won't modify the string. However the const is not needed
+	for strerror because its argument is an int which is passed by value.
+	
+	6. If the calendar time is stored as a signed 32-bit integer, in which
+	year will it overflow? How can we extend the overflow point? Are these
+	strategies compatible with existing applications?
+	32-bit signed integer --> +2^16 sec-> +2147483648 sec --> +35791394 min
+	--> +596523 hrs --> +24855 days --> +68 years --> year 2038
+	Extending overflow point by expanding int to 64-bit integer.
+	However every application has to be recompiled/may run into 
+	compatibility issues. Files/media that use 32-bit integers have
+	to be updated as well.
+	
+	7. It is defined in the stddef.h header file, which are found in the 
+	compilers stddef.h file. But for both versions available on unix5 its
+	actual data type is "long unsigned int".
 		

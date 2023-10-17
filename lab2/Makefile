@@ -4,28 +4,33 @@ CFLAGS = -g -Wall -ansi
 
 LD = gcc
 
-LDFLAGS=
+LDFLAGS =
 
-all: uniq 
+MAIN = uniq
+
+OBJS = main.o read_long_line.o
+
+all: $(MAIN)
 	
-uniq: main.o read_long_line.o
-	echo Building uniq
-	$(LD) $(LDFLAGS) -o uniq main.o read_long_line.o 
+$(MAIN): main.o read_long_line.o
+	echo Building $(MAIN)
+	$(LD) $(LDFLAGS) -o $(MAIN) $(OBJS)
 
-main.o: main.c
+main.o: main.c read_long_line.h
 	echo Building main
-	$(CC) $(CFLAGS) -c -o main.o main.c
+	$(CC) $(CFLAGS) -c main.c
 	
-read_long_line.o: read_long_line.c
+read_long_line.o: read_long_line.c read_long_line.h
 	echo Building read_long_line
-	$(CC) $(CFLAGS) -c -o read_long_line.o read_long_line.c
+	$(CC) $(CFLAGS) -c read_long_line.c
 
 clean: 
-	rm main.o read_long_line.o
+	rm *.o $(MAIN)
+
 
 test: all
-	echo Testing uniq
-	./uniq <input >output
-	uniq <input >reference
+	echo Testing $(MAIN)
+	./$(MAIN) <input >output
+	$(MAIN) <input >reference
 	diff output reference
 	echo done.

@@ -1,11 +1,8 @@
 /***Written by Johannes Hirschbeck (jhirsc01) This program is a version of the
- * unix utility program uniq(1).
- * This program will act as a filter, removing adjacent duplicate 
- * lines as it copies its stdin to its stdout. That is, any line 
- * that is identical to the previous line will be discarded rather
- * than copied to stdout.
- * Arguments: <input> <output>
- * Return: 0 on success
+ * unix utility program uniq(1). This program will act as a filter, removing
+ * adjacent duplicate lines as it copies its stdin to its stdout. That is, any
+ * line that is identical to the previous line will be discarded rather than
+ * copied to stdout. Arguments: <input> <output> Return: 0 on success
  ***/
 
 #include <stdio.h>
@@ -36,8 +33,8 @@ int main(int argc, char *argv[])
     while((next_line = read_long_line(stdin)))
     {
 
-        /* compare current_line and next_line and only check 
-           if it is not the same*/
+        /* compare current_line and next_line and only check if it is not the
+           same*/
         if(strcmp(current_line, next_line) != 0)
         {
             /* realloc() current_line memory to fit in new next_line*/
@@ -47,7 +44,7 @@ int main(int argc, char *argv[])
             strcpy(current_line, next_line);
 
             /* free next_line because new memory will be allocated for next
-             * reading*/
+            reading*/
             free(next_line);
 
             /*print out new current_line*/

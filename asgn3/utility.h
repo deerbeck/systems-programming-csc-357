@@ -11,19 +11,23 @@
  * histogram for the bytes in that file.
  * Arguments: file pointer
  * Return: histogram array*/
-int *histogram(FILE *file);
+int *histogram(int fd);
 
-/* node struct for linked list which stores the freq of character and pointer to
- * next node in linked list
- *
+/* node struct that will be used for the linked list aw well as the binary tree
+ * strucutre. It which stores the freq of character and pointer to next node in
+ * linked list as well as its childs.node_st
  * Attributes:
  * freq = number of occurences
  * byte = value of the byte
+ * *left_child = pointer to left (lesser frequency) child
+ * *right_child = pointer to right (higher frequency) child
  * *next = pointer to next element in linked list*/
 struct node_st
 {
     int freq;
     char byte;
+    struct node_st *left_ch;
+    struct node_st *right_ch;
     struct node_st *next;
 };
 typedef struct node_st node;
@@ -54,5 +58,14 @@ void printList(node *head);
  * memory
  * Arguments: pointer to start of linked list*/
 void free_list(node *head);
+
+
+
+
+/* This function recieves the head of a linked list and turns it into a binary
+ * tree representing the huffman encoding.
+ * Arguments: histogram array Return:
+ * pointer to first element (least frequent) in sorted linked list*/
+node *binaryTree(node *head);
 
 #endif

@@ -1,11 +1,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "utility.h"
 
 #define NUM_BYTES 256
+#define BUFFERSIZE 100
 
-int *histogram(FILE *file)
+int *histogram(int fd)
 {
     /* initialize histogram with size of 256 (max number of different bytes)*/
     int *histogram = (int *)calloc(NUM_BYTES, sizeof(int));
@@ -15,10 +22,22 @@ int *histogram(FILE *file)
     }
 
     /* loop through input and count occurance*/
-    char c;
-    while ((c = fgetc(file)) != EOF)
+    ssize_t bytes_read;
+    int i;
+    uint8_t buffer[BUFFERSIZE];
+    while ((bytes_read = read(fd, buffer, BUFFERSIZE)))
     {
-        *(histogram + c) += 1;
+        /* handle error while reading*/
+        if (bytes_read == -1)
+        {
+            perror("Reading Error");
+            exit(EXIT_FAILURE);
+        }
+        /* loop through buffered variable to fill histogram*/
+        for (i = 0; i < bytes_read; i++)
+        {
+            *(histogram + (buffer[i])) += 1;
+        }
     }
 
     return histogram;
@@ -65,12 +84,13 @@ node *insertSorted(node *head, node *new_node)
         previous = NULL;
         current = head;
         /* iterate through nodes until the spot between nodes is found*/
-        while ((current != NULL) && ((current->freq) < (new_node->freq)))
+        /* tiebreaker convention automatically applies, because my histogram is
+         * sorted in ascending byte order*/
+        while ((current != NULL) && ((current->freq) <= (new_node->freq)))
         {
             previous = current;
             current = previous->next;
         }
-
         /* swap nodes and insert new node*/
         previous->next = new_node;
         new_node->next = current;
@@ -119,4 +139,11 @@ void free_list(node *head)
         current = previous->next;
         free(previous);
     }
+}
+
+node *binaryTree(node *head)
+{
+    
+    node *merge;
+    return head;
 }

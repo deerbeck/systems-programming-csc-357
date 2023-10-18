@@ -6,23 +6,23 @@ LD = gcc
 
 LDFLAGS =
 
-MAIN = uniq
+MAIN = huff-e
 
-OBJS = main.o read_long_line.o
+OBJS = huff-e.o utility.o
 
 all: $(MAIN)
 	
-$(MAIN): main.o read_long_line.o
+$(MAIN): $(OBJS)
 	echo Building $(MAIN)
 	$(LD) $(LDFLAGS) -o $(MAIN) $(OBJS)
 
-main.o: main.c read_long_line.h
-	echo Building main
-	$(CC) $(CFLAGS) -c main.c
+huff-e.o: huff-e.c utility.h
+	echo Building huff-e
+	$(CC) $(CFLAGS) -c huff-e.c
 	
-read_long_line.o: read_long_line.c read_long_line.h
-	echo Building read_long_line
-	$(CC) $(CFLAGS) -c read_long_line.c
+utility.o: utility.c utility.h
+	echo Building utility
+	$(CC) $(CFLAGS) -c utility.c
 
 clean: 
 	rm *.o

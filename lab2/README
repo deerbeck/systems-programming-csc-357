@@ -1,6 +1,10 @@
 Johannes Hirschbeck (jhirsc01)
 
-
+While programming the uniq program I tried splitting up my source files to
+work with make and get a better understanding in how source files schould
+be set up so that larger programs are easier to overview. I am pretty sure
+my uniq program works, but I am not 100% sure if I did it in the most 
+efficient way or not.
 
 Problems:
 	1.	(a)	char *cp;
@@ -17,12 +21,12 @@ Problems:
 	But I don't think it is very useful.
 	
 	3. In the for loop the condition " p != '\0'" falsely checks if the
-	current address the pointer points to is the NULL character.
+	current value of the point er is the \0 character.
 	It does not check if the content at that address is the NULL Character.
 	What will happen when you execute it is that the for loop never stops
-	and accesses memmory that it is not allowed to access (But at least
-	it puts "Hello, world!\n" before that happens). Keyword
-	Segmentation fault.
+	(because p always has an address stored) and accesses memmory that it
+	is not allowed to access (But at least it puts "Hello, world!\n" before
+	that happens). Keyword Segmentation fault.
 	One can fix it by dereferencing the pointer in the condition.
 	-> " *p != '\0'"
 	
@@ -33,7 +37,7 @@ Problems:
 		of the initial element.
 		pa = &a[0]; is equal to pa = a;
 		Pointer arithmetic can be used to access the elements of an
-		array. *(pa +i) is equal to a[i] and gives us thecontent of
+		array. *(pa +i) is equal to a[i] and gives us the content of
 		the i-th element of the array.
 		-> An array index epression is equivalent to one written as
 		a pointer and offset.

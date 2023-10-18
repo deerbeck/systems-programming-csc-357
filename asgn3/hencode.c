@@ -53,6 +53,15 @@ int main(int argc, char *argv[])
     /* create linked list out of previous generated histogram*/
     node *first_el = linked_list(hist);
 
+    /* if file is empty the head is gonna be NULL -> */
+    if(!first_el)
+    {   
+        /* TO DO*/
+        /* return an empty file*/
+        printf("Empty file\n");
+        return 0;
+    }
+
     /* print out items of linked list*/
     printList(first_el);
 

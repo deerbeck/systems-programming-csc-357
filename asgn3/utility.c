@@ -55,6 +55,8 @@ node *createNode(char byte, int freq)
     /* initialize new Node with given values*/
     new_node->freq = freq;
     new_node->byte = byte;
+    new_node->left_ch = NULL;
+    new_node->right_ch = NULL;
     new_node->next = NULL;
 
     return new_node;
@@ -131,8 +133,11 @@ void printList(node *head)
 
 void free_list(node *head)
 {
+    /* free all allocated memory for the nodes*/
     node *previous = head;
     node *current = head;
+
+    /* loop through linked list and free each node memory*/
     while (current)
     {
         previous = current;
@@ -143,7 +148,16 @@ void free_list(node *head)
 
 node *binaryTree(node *head)
 {
-    
     node *merge;
+    node *current = head->next;
+    node *previous = head;
+    
+    merge = createNode((NULL), (current->freq + previous ->freq));
+    merge->left_ch = previous;
+    merge->right_ch = current;
+    merge->next = current->next;
+    previous->next = NULL;
+    current->next = NULL;
+    
     return head;
 }

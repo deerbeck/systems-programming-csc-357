@@ -6,9 +6,9 @@ LD = gcc
 
 LDFLAGS =
 
-MAIN = huff-e
+MAIN = hencode
 
-OBJS = huff-e.o utility.o
+OBJS = hencode.o utility.o
 
 all: $(MAIN)
 	
@@ -16,9 +16,9 @@ $(MAIN): $(OBJS)
 	echo Building $(MAIN)
 	$(LD) $(LDFLAGS) -o $(MAIN) $(OBJS)
 
-huff-e.o: huff-e.c utility.h
-	echo Building huff-e
-	$(CC) $(CFLAGS) -c huff-e.c
+hencode.o: hencode.c utility.h
+	echo Building hencode
+	$(CC) $(CFLAGS) -c hencode.c
 	
 utility.o: utility.c utility.h
 	echo Building utility

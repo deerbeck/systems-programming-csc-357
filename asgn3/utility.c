@@ -47,7 +47,6 @@ node *insertSorted(node *head, node *new_node)
     node *previous;
     node *current;
 
-
     /* if list is empty start with new_node as head*/
     if (!head)
     {
@@ -91,7 +90,7 @@ node *linked_list(int *histogram)
     {
         if (histogram[i] > 0)
         {
-            node *new_node = createNode((char) i, histogram[i]);
+            node *new_node = createNode((char)i, histogram[i]);
             /* Insert the node into the sorted linked list*/
             head = insertSorted(head, new_node);
         }
@@ -100,22 +99,24 @@ node *linked_list(int *histogram)
     return head;
 }
 
-void printList(node* head) {
-    node* current = head;
-    while (current != NULL) {
+void printList(node *head)
+{
+    node *current = head;
+    while (current != NULL)
+    {
         printf("Byte: %d, Frequency: %d\n", current->byte, current->freq);
         current = current->next;
     }
 }
 
-
 void free_list(node *head)
 {
     node *previous = head;
     node *current = head;
-    while(current) {
+    while (current)
+    {
         previous = current;
         current = previous->next;
         free(previous);
-    }       
+    }
 }

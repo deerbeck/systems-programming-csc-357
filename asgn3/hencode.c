@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
 #include "utility.h"
 
 int main(int argc, char *argv[])
@@ -24,7 +26,7 @@ int main(int argc, char *argv[])
 
     /* free memory of histogram*/
     free(hist);
-    
+
     /* free all nodes of sorted linked list*/
     free_list(first_el);
 

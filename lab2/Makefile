@@ -27,7 +27,6 @@ read_long_line.o: read_long_line.c read_long_line.h
 clean: 
 	rm *.o
 
-
 test: all
 	echo Testing $(MAIN)
 	./$(MAIN) <input >output

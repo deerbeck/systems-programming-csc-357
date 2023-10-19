@@ -1,11 +1,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "utility.h"
 
 #define NUM_BYTES 256
+#define BUFFERSIZE 100
 
-int *histogram(FILE *file)
+int *histogram(int fd)
 {
     /* initialize histogram with size of 256 (max number of different bytes)*/
     int *histogram = (int *)calloc(NUM_BYTES, sizeof(int));
@@ -15,10 +22,22 @@ int *histogram(FILE *file)
     }
 
     /* loop through input and count occurance*/
-    char c;
-    while ((c = fgetc(file)) != EOF)
+    ssize_t bytes_read;
+    int i;
+    uint8_t buffer[BUFFERSIZE];
+    while ((bytes_read = read(fd, buffer, BUFFERSIZE)))
     {
-        *(histogram + c) += 1;
+        /* handle error while reading*/
+        if (bytes_read == -1)
+        {
+            perror("Reading Error");
+            exit(EXIT_FAILURE);
+        }
+        /* loop through buffered variable to fill histogram*/
+        for (i = 0; i < bytes_read; i++)
+        {
+            *(histogram + (buffer[i])) += 1;
+        }
     }
 
     return histogram;
@@ -36,6 +55,8 @@ node *createNode(char byte, int freq)
     /* initialize new Node with given values*/
     new_node->freq = freq;
     new_node->byte = byte;
+    new_node->left_ch = NULL;
+    new_node->right_ch = NULL;
     new_node->next = NULL;
 
     return new_node;
@@ -65,12 +86,13 @@ node *insertSorted(node *head, node *new_node)
         previous = NULL;
         current = head;
         /* iterate through nodes until the spot between nodes is found*/
-        while ((current != NULL) && ((current->freq) < (new_node->freq)))
+        /* tiebreaker convention automatically applies, because my histogram is
+         * sorted in ascending byte order*/
+        while ((current != NULL) && ((current->freq) <= (new_node->freq)))
         {
             previous = current;
             current = previous->next;
         }
-
         /* swap nodes and insert new node*/
         previous->next = new_node;
         new_node->next = current;
@@ -111,12 +133,42 @@ void printList(node *head)
 
 void free_list(node *head)
 {
+    /* free all allocated memory for the nodes*/
     node *previous = head;
     node *current = head;
+
+    /* loop through linked list and free each node memory*/
     while (current)
     {
         previous = current;
         current = previous->next;
         free(previous);
     }
+}
+
+node *binaryTree(node *head)
+{
+    node *merge;
+    node *previous = NULL;
+    node *current = head;
+    
+    while (current->next)
+    {
+        previous = current;
+        current = previous->next;
+
+        merge = createNode(0, (current->freq + previous->freq));
+
+        merge->left_ch = previous;
+        merge->right_ch = current;
+        
+
+        current = insertSorted(current->next, merge);
+
+
+        merge->left_ch->next = NULL;
+        merge->right_ch->next = NULL;
+    }
+
+    return current;
 }

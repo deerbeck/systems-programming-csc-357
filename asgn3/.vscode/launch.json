@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) huff-e",
+            "name": "(gdb) hencode",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/huff-e",
+            "program": "${workspaceFolder}/hencode",
             "args": [
                 "input"
             ],

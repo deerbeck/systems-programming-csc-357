@@ -19,41 +19,40 @@ int main(int argc, char *argv[])
     /* next line */
     char *next_line;
 
-
-    /*read first line*/
+    /* read first line*/
     current_line = read_long_line(stdin);
-    if(current_line)
+    if (current_line)
     {
-        /*print out first current_line*/
+        /* print out first current_line*/
         printf("%s\n", current_line);
     }
 
     /* read next line and compare it to current line do it in a loop to loop
      * through all next lines break out if next line is NULL*/
-    while((next_line = read_long_line(stdin)))
+    while ((next_line = read_long_line(stdin)))
     {
 
         /* compare current_line and next_line and only check if it is not the
            same*/
-        if(strcmp(current_line, next_line) != 0)
+        if (strcmp(current_line, next_line) != 0)
         {
-            /* realloc() current_line memory to fit in new next_line*/
-            current_line = realloc(current_line, strlen(next_line)+1);
 
-            /* copy next_line and set as new current_line*/
-            strcpy(current_line, next_line);
+            /* free current line (memory managing) and swap it with next line*/
+            free(current_line);
+            current_line = next_line;
 
-            /* free next_line because new memory will be allocated for next
-            reading*/
-            free(next_line);
-
-            /*print out new current_line*/
+            /* print out new current_line*/
             printf("%s\n", current_line);
+        }
+        /* free memory if lines are the same*/
+        else
+        {
+            free(next_line);
         }
     }
 
-    /*freeing allocated memory after being done with comparison*/
+    /* freeing allocated memory after being done with comparison*/
     free(next_line);
-    free(current_line);      
+    free(current_line);
     return 0;
 }

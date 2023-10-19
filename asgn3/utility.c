@@ -149,15 +149,26 @@ void free_list(node *head)
 node *binaryTree(node *head)
 {
     node *merge;
-    node *current = head->next;
-    node *previous = head;
+    node *previous = NULL;
+    node *current = head;
     
-    merge = createNode((NULL), (current->freq + previous ->freq));
-    merge->left_ch = previous;
-    merge->right_ch = current;
-    merge->next = current->next;
-    previous->next = NULL;
-    current->next = NULL;
-    
-    return head;
+    while (current->next)
+    {
+        previous = current;
+        current = previous->next;
+
+        merge = createNode(0, (current->freq + previous->freq));
+
+        merge->left_ch = previous;
+        merge->right_ch = current;
+        
+
+        current = insertSorted(current->next, merge);
+
+
+        merge->left_ch->next = NULL;
+        merge->right_ch->next = NULL;
+    }
+
+    return current;
 }

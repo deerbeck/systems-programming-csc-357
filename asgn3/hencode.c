@@ -62,6 +62,9 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    /* create binaryTree out of linked list*/
+    node *root = binaryTree(first_el);
+
     /* print out items of linked list*/
     printList(first_el);
 

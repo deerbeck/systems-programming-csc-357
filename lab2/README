@@ -6,6 +6,9 @@ be set up so that larger programs are easier to overview. I am pretty sure
 my uniq program works, but I am not 100% sure if I did it in the most 
 efficient way or not.
 
+Code is commented/ "documented" to better understand what I was trying to
+do and what I ended up doing.
+
 Problems:
 	1.	(a)	char *cp;
 		(b)	char *ap;
@@ -70,3 +73,5 @@ Problems:
 	compilers stddef.h file. But for both versions available on unix5 its
 	actual data type is "long unsigned int".
 		
+		
+

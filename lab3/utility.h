@@ -33,7 +33,7 @@ int *histogram(int fd);
 struct node_st
 {
     int freq;
-    unsigned char byte;
+    char byte;
     struct node_st *left_ch;
     struct node_st *right_ch;
     struct node_st *next;

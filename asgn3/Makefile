@@ -6,27 +6,42 @@ LD = gcc
 
 LDFLAGS =
 
-MAIN = hencode
+OBJSE = hencode.o utility.o
+OBJSD = hdecode.o utility.o
+OBJST = htable.o utility.o
 
-OBJS = hencode.o utility.o
-
-all: $(MAIN)
+all: hencode hdecode htable
 	
-$(MAIN): $(OBJS)
-	echo Building $(MAIN)
-	$(LD) $(LDFLAGS) -o $(MAIN) $(OBJS)
+hencode: $(OBJSE)
+	echo Building hencode
+	$(LD) $(LDFLAGS) -o hencode $(OBJSE)
+
+hdecode: $(OBJSD)
+	echo Building hdecode
+	$(LD) $(LDFLAGS) -o hdecode $(OBJSD)
+	
+htable: $(OBJST)
+	echo Building htable
+	$(LD) $(LDFLAGS) -o htable $(OBJST)
 
 hencode.o: hencode.c utility.h
 	echo Building hencode
 	$(CC) $(CFLAGS) -c hencode.c
 	
+hdecode.o: hdecode.c utility.h
+	echo Building hdecode
+	$(CC) $(CFLAGS) -c hdecode.c
+
+htable.o: htable.c utility.h
+	echo Building htable
+	$(CC) $(CFLAGS) -c htable.c
+
 utility.o: utility.c utility.h
 	echo Building utility
 	$(CC) $(CFLAGS) -c utility.c
 
 clean: 
 	rm *.o
-
 
 test: all
 	echo Testing $(MAIN)

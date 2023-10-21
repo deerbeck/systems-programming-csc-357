@@ -1,26 +1,24 @@
-/***Written by Johannes Hirschbeck (jhirsc01). This program is a compression
- * tool, hencode, that will use Huffman codes to compress a given file.
- * Usage:
- * hencode infile [ outfile ]
+/***Written by Johannes Hirschbeck (jhirsc01). This program, htable generates
+ * the table of encodings appropriate for a given file.
+ * Usage: htable filename
  ***/
+
 #include "utility.h"
 
 int main(int argc, char *argv[])
 {
     /* input file has to be given for encoding*/
-    int input_fd;
-    /* if no output file is given, use stdout*/
-    int output_fd = STDOUT_FILENO;
+    FILE *input_fd;
 
     /* handle missing input file*/
-    if (argc == 1)
+    if (argc != 2)
     {
-        printf("Usage: %s <input_file> [<output_file>]", argv[0]);
+        printf("Usage: %s <input_file>", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     /* open input file and handle any occuring error while opening*/
-    else if (argc > 1)
+    else
     {
         input_fd = open(argv[1], O_RDONLY);
 
@@ -28,21 +26,6 @@ int main(int argc, char *argv[])
         {
             perror(argv[1]);
             exit(EXIT_FAILURE);
-        }
-        /* if output file provided open it and handle occuring error while
-         * opening*/
-        if (argc == 3)
-        {
-            output_fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC,
-                             S_IRUSR | S_IWUSR);
-
-            if (output_fd == -1)
-            {
-                perror(argv[2]);
-                /* close input file before exiting*/
-                close(input_fd);
-                exit(EXIT_FAILURE);
-            }
         }
     }
 
@@ -63,7 +46,6 @@ int main(int argc, char *argv[])
         free(hist);
         /*close input and output file*/
         close(input_fd);
-        close(output_fd);
         return 0;
     }
 
@@ -95,48 +77,18 @@ int main(int argc, char *argv[])
 
     /* sort h_table in ascending order of the byte values*/
     hTableSort(h_table, num);
-/*     int bsi;
-    for(bsi = 0; bsi<num; bsi++)
-    {
-        printf("%x ",h_table[bsi]->byte);
-    }
- */
-    /* apply header to output*/
-    writeHeader(output_fd, hist, num);
 
-    /* create bitsream for encoding*/
-    bitstream *bs = createBitstream();
-
-    /* creat h_table lookup for easier encoding*/
-    /* h_table entry is store at the index equal to the byte*/
-    h_table_entry *h_lookup[NUM_POSSIB_BYTES];
-    for (i = 0; i < num; i++)
+    int h_index;
+    for (h_index = 0; h_index < num; h_index++)
     {
-        h_lookup[h_table[i]->byte] = h_table[i];
+        printf("0x%x : %s\n", h_table[h_index]->byte, h_table[h_index]->encoding);
     }
 
-    /* apply encoding to output*/
-    generateEncoding(input_fd, output_fd, h_lookup, num, bs);
-
-    /* write bitstream to output file*/
-    writeEncoding(output_fd, bs);
-
-    /* free h_table*/
-    for (i = 0; i < num; i++)
-    {
-        free(h_table[i]);
-    }
-
-    /* free Bitstream and its data*/
-    free(bs->data);
-    free(bs);
+    /* free memory*/
     /* free binary tree*/
     freeBinaryTree(root);
-    /* free memory of histogram*/
+    /* free histogram*/
     free(hist);
     /*close input and output file*/
     close(input_fd);
-    close(output_fd);
-
-    return 0;
 }

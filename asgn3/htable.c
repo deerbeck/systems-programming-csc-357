@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         count_node = count_node->next;
         num += 1;
     }
-    printList(head);
+    
     /* create binaryTree out of linked list*/
     node *root = binaryTree(head);
 
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     int h_index;
     for (h_index = 0; h_index < num; h_index++)
     {
-        printf("0x%02x : %s\n", h_table[h_index]->byte, 
+        printf("0x%02x: %s\n", h_table[h_index]->byte, 
         h_table[h_index]->encoding);
     }
 

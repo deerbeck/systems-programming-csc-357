@@ -44,6 +44,23 @@ int main(int argc, char *argv[])
 
     /* read Header and generate linked list*/
     node *head = readHeader(input_fd);
+    if (head == NULL)
+    {
+        /* exit because of empty file*/
+        /* close input and output file*/
+        close(input_fd);
+        close(output_fd);
+        return 0;
+    }
+
+    /* get number of bytes that are compressed (basically filesize)*/
+    uint32_t tot_bytes = 0;
+    node *count_node = head;
+    while (count_node)
+    {
+        tot_bytes += count_node->freq;
+        count_node = count_node->next;
+    }
 
     /* create binary tree out of linked list*/
     node *root = binaryTree(head);
@@ -51,8 +68,11 @@ int main(int argc, char *argv[])
     /* create Bitstream where file is going to be stored in*/
     bitstream *bs = createBitstream();
 
-    /* */
-    decodeBody(input_fd, output_fd, root, bs);
+    /* decode Body but only if there is content to decode*/
+    if (tot_bytes)
+    {
+        decodeBody(input_fd, output_fd, root, bs, tot_bytes);
+    }
 
     /*free memory*/
     /* free Bitstream and its data*/

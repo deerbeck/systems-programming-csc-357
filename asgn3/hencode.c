@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     }
 
     /* loop through linked list to get number of entries*/
-    int num = 0;
+    uint16_t num = 0;
     node *count_node = head;
     while (count_node)
     {

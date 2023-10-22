@@ -247,7 +247,7 @@ void populateHTable(node *root, h_table_entry **h_table,
     populateHTable(root->right_ch, h_table, rightPath, index);
 }
 
-void hTableSort(h_table_entry **h_table, int num_entries)
+void hTableSort(h_table_entry **h_table, uint16_t num_entries)
 {
     int swapped;
     int i;
@@ -271,7 +271,7 @@ void hTableSort(h_table_entry **h_table, int num_entries)
     } while (swapped);
 }
 
-void writeHeader(int output_fd, int *histogram, int num_entries)
+void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
 {
     /* write num to header*/
     int bytes_written;
@@ -445,15 +445,22 @@ node *readHeader(int input_fd)
 {
     node *head = NULL;
     int i;
-    uint8_t num;
+    uint16_t num;
     uint8_t byte;
     uint32_t frequency;
+    ssize_t bytes_read;
 
     /* read number of different bytes and handle error*/
-    if (read(input_fd, &num, 1) == -1)
+    bytes_read = read(input_fd, &num, 1);
+    if (bytes_read == -1)
     {
         perror("Reading Error");
         exit(EXIT_FAILURE);
+    }
+    else if(bytes_read == 0)
+    {
+        /* empty file coverage*/
+        return head;
     }
 
     /* number is actually 1 bigger*/
@@ -485,61 +492,76 @@ node *readHeader(int input_fd)
     return head;
 }
 
-void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs)
+ssize_t readBody(int input_fd, bitstream *bs)
+{
+    ssize_t bytes_read;
+
+    bytes_read = read(input_fd, bs->data, BITSTREAM_SIZE);
+
+    if (bytes_read == -1)
+    {
+        perror("Reading Error");
+        exit(EXIT_FAILURE);
+    }
+    bs->index = 0;
+
+    return bytes_read;
+}
+void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
+                uint32_t total_bytes)
 {
     ssize_t bytes_read;
     node *current = root;
-
+    uint32_t byte_count = 0;
     /* helper variables for reading right bit*/
     int byteIndex;
     int bitOffset;
 
-    /* read into buffer the size of the bitstream array*/
-    while ((bytes_read = read(input_fd, bs->data, BITSTREAM_SIZE)))
-    {
-        bs->index = 0;
-        /* check for reading error*/
-        if (bytes_read == -1)
-        {
-            perror("Reading Error");
-            exit(EXIT_FAILURE);
-        }
-        while (bs->index < ((bytes_read * 8) + 1))
-        {
+    bytes_read = readBody(input_fd, bs);
 
-            if (current->left_ch && current->right_ch)
+    /* read into buffer the size of the bitstream array*/
+    while (byte_count < (total_bytes))
+    {
+        if (bs->index >= (bytes_read * 8))
+        {
+            bytes_read = readBody(input_fd, bs);
+        }
+
+        if (current->left_ch && current->right_ch)
+        {
+            /* current byte we are working on*/
+            byteIndex = bs->index / 8;
+            /* current bit in byte to be checked 8- (indx+1) 8- because of
+             * order of bits (left to right given through encodeng) and +1
+             * because for bit operation the index does not start at 0 but
+             * at 1*/
+            bitOffset = (8 - ((bs->index % 8) + 1));
+            bs->index++;
+            /* check if bit at offset location is 1 and traverse tree to
+             * right child accordingly*/
+            if (bs->data[byteIndex] & (1 << bitOffset))
             {
-                /* current byte we are working on*/
-                byteIndex = bs->index / 8;
-                /* current bit in byte to be checked 8- (indx+1) 8- because of
-                 * order of bits (left to right given through encodeng) and +1
-                 * because for bit operation the index does not start at 0 but
-                 * at 1*/
-                bitOffset = (8 - ((bs->index % 8) + 1));
-                bs->index++;
-                /* check if bit at offset location is 1 and traverse tree to
-                 * right child accordingly*/
-                if (bs->data[byteIndex] & (1 << bitOffset))
-                {
-                    current = current->right_ch;
-                }
-                else
-                {
-                    current = current->left_ch;
-                }
+                current = current->right_ch;
             }
             else
             {
-                /* write character to output and check error*/
-                if ((write(output_fd, &(current->byte), 1)) == -1)
-                {
-
-                    perror("Writing Error");
-                    exit(EXIT_FAILURE);
-                }
-                /* reset current position in tree back to root*/
-                current = root;
+                current = current->left_ch;
             }
+        }
+        else
+        {
+            /* write character to output and check error*/
+            if ((write(output_fd, &(current->byte), 1)) == -1)
+            {
+
+                perror("Writing Error");
+                exit(EXIT_FAILURE);
+            }
+            /* increase byte_count to keep track at when to stop*/
+            byte_count++;
+
+            /* reset current position in tree back to root*/
+            current = root;
         }
     }
 }

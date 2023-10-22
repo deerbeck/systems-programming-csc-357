@@ -63,7 +63,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/hdecode",
             "args": [
-                "output.huff", "test"
+                "05_binary.huff", "output5"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

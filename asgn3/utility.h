@@ -95,7 +95,7 @@ struct h_table_entry
 };
 typedef struct h_table_entry h_table_entry;
 
-/* This function pupulates a hash table by recursevly stepping down each 
+/* This function pupulates a hash table by recursevly stepping down each
  * path of a binary tree, recording its path on the way
  * Arguments:
  * root (current node pointer)
@@ -107,7 +107,7 @@ void populateHTable(node *root, h_table_entry **h_table,
 
 /* This is a small bubble sort algorithm to sort the hash table entries in
  * ascending byte order*/
-void hTableSort(h_table_entry **h_table, int num_entries);
+void hTableSort(h_table_entry **h_table, uint16_t num_entries);
 
 /* This function takes the histogram which stores the frequencies of each
  * byte and
@@ -116,7 +116,7 @@ void hTableSort(h_table_entry **h_table, int num_entries);
  * output_fd file descriptor for output stream
  * histogram array
  * number of different bytes found in input file*/
-void writeHeader(int output_fd, int *histogram, int num_entries);
+void writeHeader(int output_fd, int *histogram, uint16_t num_entries);
 
 /* Structure to store the encoding as a bitstream.
  * Attributes:
@@ -168,6 +168,8 @@ void writeEncoding(int output_fd, bitstream *bs);
  * linked List genereated with given input file*/
 node *readHeader(int input_fd);
 
+ssize_t readBody(int input_fd, bitstream* bs);
+
 /* This function takes the input file and output file as well as the binary
  * tree for decoding and decodes the input file by traversing down the
  * binary tree and writing the decompressed data to the output file.
@@ -176,6 +178,7 @@ node *readHeader(int input_fd);
  * output_fd file descriptor for input stream
  * root of binary Tree
  * bistream pointer to bitstream*/
-void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs);
+void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
+                uint32_t total_bytes);
 
 #endif

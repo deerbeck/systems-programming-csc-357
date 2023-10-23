@@ -68,7 +68,7 @@ node *insertSorted(node *head, node *new_node)
     node *current;
 
     /* if list is empty start with new_node as head*/
-    if (!head)
+    if (head == NULL)
     {
         head = new_node;
     }
@@ -84,22 +84,30 @@ node *insertSorted(node *head, node *new_node)
     {
         previous = NULL;
         current = head;
-        /* iterate through nodes until the spot between nodes is found*/
-        /* tiebreaker convention automatically applies, because my histogram is
-         * sorted in ascending byte order*/
+        if (current->freq == new_node->freq && new_node->byte < current->byte)
+        {
+            new_node->next = current;
+            return new_node;
+        }
+        /* iterate through nodes until the spot between nodes is found if node
+        is null insert new node at the end of linked list*/
         while ((current != NULL))
         {
+            /* continue going through linked list if frequency is still bigger*/
             if (current->freq < new_node->freq)
             {
                 previous = current;
                 current = previous->next;
             }
+            /* if frequenccy is the same apply tiebraker convention and insert
+             * according to the byte avlue*/
             else if ((current->freq == new_node->freq) &&
                      ((current->byte < new_node->byte)))
             {
                 previous = current;
                 current = previous->next;
             }
+            /* stop if spot inside of linked list is found*/
             else
             {
                 break;
@@ -214,10 +222,10 @@ void freeBinaryTree(node *root)
         freeBinaryTree(root->left_ch);
         freeBinaryTree(root->right_ch);
     }
-    /* if leaf is reached free that leaf and set to null*/
+    /* if leaf is reached free that leaf and set to null so parents become new
+    leaf*/
     free(root);
     root = NULL;
-    /* so parents become new leaf*/
     return;
 }
 
@@ -245,6 +253,22 @@ void populateHTable(node *root, h_table_entry **h_table,
     strcat(rightPath, "1");
     populateHTable(root->left_ch, h_table, leftPath, index);
     populateHTable(root->right_ch, h_table, rightPath, index);
+}
+
+int compareEnntries(const void *entry_a, const void *entry_b)
+{
+    const h_table_entry * entry_a_sort = entry_a;
+    const h_table_entry * entry_b_sort = entry_b;
+    if (entry_a_sort->byte > entry_b_sort->byte)
+    {
+        return -1;
+    }
+    else if (entry_a_sort->byte < entry_b_sort->byte)
+    {
+        return 1;
+    }
+
+    return 0;
 }
 
 void hTableSort(h_table_entry **h_table, uint16_t num_entries)
@@ -293,6 +317,7 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
         {
             /* get byte value represented as index and convert back to uchar*/
             byte = (uint8_t)i;
+            /* write using UNIX IO write()*/
             bytes_written = write(output_fd, &byte, 1);
             if (bytes_written == -1)
             {
@@ -302,6 +327,7 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
 
             /* convert frequency to network byte order*/
             frequency = htonl(histogram[i]);
+            /* write using UNIX IO write()*/
             bytes_written = write(output_fd, &frequency, 4);
             if (bytes_written == -1)
             {
@@ -324,12 +350,15 @@ bitstream *createBitstream()
     }
     /* initialize data array with set arbitrary size*/
     bs->data = (uint8_t *)malloc(BITSTREAM_SIZE);
-    /* set all of the data to 0*/
+
+    /* set newly allocated memory to 0. This takes care of the needed
+     * padding if last byte won't be filled completely*/
     int i;
     for (i = 0; i < BITSTREAM_SIZE; i++)
     {
         bs->data[i] = 0;
     }
+
     bs->size = BITSTREAM_SIZE;
     /* set current cursor index to 0*/
     bs->index = 0;
@@ -344,6 +373,8 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
         /* resize bitstream data and handle any occuring error*/
         uint8_t *tmp;
         bs->size += BITSTREAM_SIZE;
+
+        /* needed to free memory even though allocation failed*/
         tmp = realloc(bs->data, bs->size);
         if (tmp == NULL)
         {
@@ -351,7 +382,9 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
             exit(EXIT_FAILURE);
         }
         bs->data = tmp;
-        /* set newly allocated memory to 0*/
+
+        /* set newly allocated memory to 0. This takes care of the needed
+         * padding if last byte won't be filled completely*/
         int i;
         for (i = (bs->index / 8); i < bs->size; i++)
         {
@@ -365,10 +398,12 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
     /* set the bit at the current index*/
     if (!bit)
     {
+        /* set bit to 0*/
         bs->data[byteIndex] &= ~(0 << (7 - bitOffset));
     }
     else
     {
+        /* set bit to 1*/
         bs->data[byteIndex] |= (1 << (7 - bitOffset));
     }
 
@@ -383,9 +418,9 @@ void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
     int d_index;
 
     char bit;
-
     ssize_t bytes_read;
     uint8_t buffer[READ_WRITE_BUFFER_SIZE];
+    /* while not reaching EOF keep reading*/
     while ((bytes_read = read(input_fd, buffer, READ_WRITE_BUFFER_SIZE)))
     {
         /* handle error while reading*/
@@ -457,9 +492,9 @@ node *readHeader(int input_fd)
         perror("Reading Error");
         exit(EXIT_FAILURE);
     }
-    else if(bytes_read == 0)
+    /* file is empty*/
+    else if (bytes_read == 0)
     {
-        /* empty file coverage*/
         return head;
     }
 
@@ -484,46 +519,58 @@ node *readHeader(int input_fd)
         /* convert frequency back to hostbyte order*/
         frequency = ntohl(frequency);
 
+        /* create new node corresponding to the read byte and frequency and
+        insert into linked List accordingly*/
         node *new_node = createNode(byte, frequency);
-
         head = insertSorted(head, new_node);
     }
-
+    /* return head of the linked list*/
     return head;
 }
 
 ssize_t readBody(int input_fd, bitstream *bs)
 {
+    /* variable to return later*/
     ssize_t bytes_read;
 
+    /* UNIX IO read into th bitstream data*/
     bytes_read = read(input_fd, bs->data, BITSTREAM_SIZE);
 
+    /* handle reading error*/
     if (bytes_read == -1)
     {
         perror("Reading Error");
         exit(EXIT_FAILURE);
     }
+    /* reset Bitstream index*/
     bs->index = 0;
 
     return bytes_read;
 }
+
 void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
                 uint32_t total_bytes)
 {
+    /* num of bytes that have been read by UNIX IO read()*/
     ssize_t bytes_read;
+    /* start node is the root of the binary tree*/
     node *current = root;
+    /* byte_count to keep track of bytes to be written*/
     uint32_t byte_count = 0;
     /* helper variables for reading right bit*/
     int byteIndex;
     int bitOffset;
 
+    /* first read data into bitstream data*/
     bytes_read = readBody(input_fd, bs);
 
-    /* read into buffer the size of the bitstream array*/
+    /* loop until number of total_bytes is reached*/
     while (byte_count < (total_bytes))
     {
+        /* bytes read * 8 == bits read*/
         if (bs->index >= (bytes_read * 8))
         {
+            /* get new data if end of buffer is reached*/
             bytes_read = readBody(input_fd, bs);
         }
 
@@ -531,11 +578,14 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
         {
             /* current byte we are working on*/
             byteIndex = bs->index / 8;
+
             /* current bit in byte to be checked 8- (indx+1) 8- because of
-             * order of bits (left to right given through encodeng) and +1
+             * order of bits (left to right given through encoding) and +1
              * because for bit operation the index does not start at 0 but
              * at 1*/
             bitOffset = (8 - ((bs->index % 8) + 1));
+            /* increment index to bit*/
+
             bs->index++;
             /* check if bit at offset location is 1 and traverse tree to
              * right child accordingly*/
@@ -543,6 +593,7 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
             {
                 current = current->right_ch;
             }
+            /* else traverse to the left_child*/
             else
             {
                 current = current->left_ch;

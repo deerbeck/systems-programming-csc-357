@@ -105,6 +105,10 @@ typedef struct h_table_entry h_table_entry;
 void populateHTable(node *root, h_table_entry **h_table,
                     char *path, int *index);
 
+/* This function exists to be used in the qsort algorithm to sort the h_table
+ * according to the byte values.*/
+int compareEnntries(const void *entry_a, const void *entry_b);
+
 /* This is a small bubble sort algorithm to sort the hash table entries in
  * ascending byte order*/
 void hTableSort(h_table_entry **h_table, uint16_t num_entries);
@@ -168,7 +172,14 @@ void writeEncoding(int output_fd, bitstream *bs);
  * linked List genereated with given input file*/
 node *readHeader(int input_fd);
 
-ssize_t readBody(int input_fd, bitstream* bs);
+/* This takes the input file and the pointer to the bitstream and reads into
+ * the bitstream data array. And returns the number of the actual bytes read.
+ * Arguments:
+ * input_fd file descriptor for input stream
+ * bistream pointer to bitstream
+ * Return:
+ * number of read bytes*/
+ssize_t readBody(int input_fd, bitstream *bs);
 
 /* This function takes the input file and output file as well as the binary
  * tree for decoding and decodes the input file by traversing down the

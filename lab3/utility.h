@@ -33,7 +33,7 @@ int *histogram(int fd);
 struct node_st
 {
     int freq;
-    char byte;
+    unsigned char byte;
     struct node_st *left_ch;
     struct node_st *right_ch;
     struct node_st *next;
@@ -95,7 +95,7 @@ struct h_table_entry
 };
 typedef struct h_table_entry h_table_entry;
 
-/* This function pupulates a hash table by recursevly stepping down each 
+/* This function pupulates a hash table by recursevly stepping down each
  * path of a binary tree, recording its path on the way
  * Arguments:
  * root (current node pointer)
@@ -105,77 +105,12 @@ typedef struct h_table_entry h_table_entry;
 void populateHTable(node *root, h_table_entry **h_table,
                     char *path, int *index);
 
+/* This function exists to be used in the qsort algorithm to sort the h_table
+ * according to the byte values.*/
+int compareEnntries(const void *entry_a, const void *entry_b);
+
 /* This is a small bubble sort algorithm to sort the hash table entries in
  * ascending byte order*/
-void hTableSort(h_table_entry **h_table, int num_entries);
-
-/* This function takes the histogram which stores the frequencies of each
- * byte and
- * writes it to the provided output stream
- * Arguments:
- * output_fd file descriptor for output stream
- * histogram array
- * number of different bytes found in input file*/
-void writeHeader(int output_fd, int *histogram, int num_entries);
-
-/* Structure to store the encoding as a bitstream.
- * Attributes:
- * data pointer to byte array which stores the data
- * current size of the data in bytes
- * current index of the bitstream*/
-struct bitstream_st
-{
-    uint8_t *data;
-    int size;
-    int index;
-};
-typedef struct bitstream_st bitstream;
-
-/* Helper function to initialize the bitstream and store some initail data
- * in it.
- * Arguments:
- * Return pointer to initialized bitstream struct*/
-bitstream *createBitstream();
-
-/* Write a single bit to the bitstream and resize if needed
- * Arguments:
- * bs bitstream pointer
- * bit the value of the bit to set*/
-void writeBitBitstream(bitstream *bs, uint8_t bit);
-
-/* This function encodes a provided input file using a hash table which stores
- * the encoding of each byte and writes it to the output stream
- * Arguments:
- * inputt_fd file descriptor for input stream
- * output_fd file descriptor for output stream
- * hash table (array of hash table structs)
- * number of different bytes found in input file
- * bitstream pointer to the bitstream*/
-void generateEncoding(int input_fd, int output_fd, h_table_entry **h_table,
-                      int num_entries, bitstream *bs);
-
-/* This function writes the encoding stored in the bitstream to the output
- * filestream
- * Arguments:
- * output_fd file descriptor for output stream
- * bitstream pointer to the bitstream*/
-void writeEncoding(int output_fd, bitstream *bs);
-
-/* This function takes the input file descriptor, reads in the header and
- * generates a corresponding linked List out of it.
- * Arguments:
- * input_fd file descriptor for input stream
- * linked List genereated with given input file*/
-node *readHeader(int input_fd);
-
-/* This function takes the input file and output file as well as the binary
- * tree for decoding and decodes the input file by traversing down the
- * binary tree and writing the decompressed data to the output file.
- * Arguments:
- * input_fd file descriptor for input stream
- * output_fd file descriptor for input stream
- * root of binary Tree
- * bistream pointer to bitstream*/
-void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs);
+void hTableSort(h_table_entry **h_table, uint16_t num_entries);
 
 #endif

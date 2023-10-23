@@ -36,7 +36,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/hencode",
             "args": [
-                "05_binary", "output5.huff"
+                "input", "output"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

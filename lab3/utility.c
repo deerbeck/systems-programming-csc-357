@@ -257,40 +257,19 @@ void populateHTable(node *root, h_table_entry **h_table,
 
 int compareEnntries(const void *entry_a, const void *entry_b)
 {
-    const h_table_entry * entry_a_sort = entry_a;
-    const h_table_entry * entry_b_sort = entry_b;
-    if (entry_a_sort->byte > entry_b_sort->byte)
+    /* my h_table array is an array of pointers which point to my entry structs
+    this is to get the pointer to that entry struct and keeping it constant*/
+    const h_table_entry *const(*entry_a_sort) = entry_a;
+    const h_table_entry *const(*entry_b_sort) = entry_b;
+    /* comparing the bytes to sort them in ascending order*/
+    if ((*entry_a_sort)->byte < (*entry_b_sort)->byte)
     {
         return -1;
     }
-    else if (entry_a_sort->byte < entry_b_sort->byte)
+    else if ((*entry_a_sort)->byte > (*entry_b_sort)->byte)
     {
         return 1;
     }
 
     return 0;
-}
-
-void hTableSort(h_table_entry **h_table, uint16_t num_entries)
-{
-    int swapped;
-    int i;
-    do
-    {
-        swapped = 0;
-        for (i = 1; i < num_entries; i++)
-        {
-            if ((h_table[i - 1]->byte) > (h_table[i]->byte))
-            {
-
-                /* Swap h_table[i-1] and h_table[i]*/
-                h_table_entry *temp = h_table[i - 1];
-                h_table[i - 1] = h_table[i];
-                h_table[i] = temp;
-
-                /* Set the flag to true to continue sorting*/
-                swapped = 1;
-            }
-        }
-    } while (swapped);
 }

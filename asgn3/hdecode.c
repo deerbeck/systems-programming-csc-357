@@ -18,7 +18,6 @@ int main(int argc, char *argv[])
         if (*argv[1] != '-')
         {
             input_fd = open(argv[1], O_RDONLY);
-
             if (input_fd == -1)
             {
                 perror(argv[1]);
@@ -95,7 +94,6 @@ int main(int argc, char *argv[])
     /* free binary tree*/
     freeBinaryTree(root);
 
-    /*close input and output file*/
     /*close input and output file*/
     if (close(input_fd) == -1)
     {

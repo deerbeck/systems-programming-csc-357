@@ -1,7 +1,11 @@
 Johannes Hirschbeck (jhirsc01)
 
+This program basically uses my code from hencode.
+It is just modified to account for the simpleness needed for this lab.
+It should do what it is supposed to do. At least all the Test cases 
+succeeded with tryLab03 and valgrind did not show any problems.
 
+The utility functions do not differ from them used by hencode and hdecode.
 
-Code is commented/ "documented" to better understand what I was trying to
-do and what I ended up doing.
-
+The code is commented to better understand what I was trying to do and what 
+I ended up doing.

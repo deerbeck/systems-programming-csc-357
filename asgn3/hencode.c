@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     /* handle missing input file*/
     if (argc == 1)
     {
-        printf("Usage: %s <input_file> [<output_file>]", argv[0]);
+        fprintf(stderr,"Usage: %s <input_file> [<output_file>]", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -40,10 +40,10 @@ int main(int argc, char *argv[])
             {
                 perror(argv[2]);
                 /* close input file before exiting*/
-                if(close(input_fd)==-1)
+                if (close(input_fd) == -1)
                 {
                     perror("close");
-                    exit(EXIT_FAILURE);    
+                    exit(EXIT_FAILURE);
                 }
                 exit(EXIT_FAILURE);
             }
@@ -103,11 +103,11 @@ int main(int argc, char *argv[])
     /* create h_table from binary tree*/
     /* index and path variables needed for initialization of the function*/
     int index = 0;
-    char path[256] = "";
+    char path[NUM_POSSIB_BYTES] = "";
     populateHTable(root, h_table, path, &index);
 
     /* sort h_table in ascending order of the byte values*/
-    hTableSort(h_table, num);
+    qsort(h_table, num, sizeof(h_table_entry *), compareEnntries);
 
     /* apply header to output*/
     writeHeader(output_fd, hist, num);

@@ -1,7 +1,13 @@
 Johannes Hirschbeck (jhirsc01)
 
+To say this program was as easy as detab would be a straight lie...
+But after many hours (>25) and much debugging and rewriting I think I got it
+running.
+At least it runs against all the test cases provided by tryAsgn3.
+As well as no memory problems that would've been catched by valgrind.
+I spent another rather large amount of time trying to improve perofmance here
+and there and I hope I kept the reasonableness in it.
 
-
-Code is commented/ "documented" to better understand what I was trying to
-do and what I ended up doing.
-
+I commented most of my code to explain what I tried to do and what I ended up
+doing.
+But documentation is definitely not my strongest skill.

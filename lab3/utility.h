@@ -12,8 +12,8 @@
 #include <arpa/inet.h>
 
 #define NUM_POSSIB_BYTES 256
-#define READ_WRITE_BUFFER_SIZE 100
-#define BITSTREAM_SIZE 100
+#define READ_WRITE_BUFFER_SIZE 4096
+#define BITSTREAM_SIZE 4096
 
 /* This function takes in a FILE Pointer to a binary file and creates a
  * histogram for the bytes in that file.
@@ -108,9 +108,5 @@ void populateHTable(node *root, h_table_entry **h_table,
 /* This function exists to be used in the qsort algorithm to sort the h_table
  * according to the byte values.*/
 int compareEnntries(const void *entry_a, const void *entry_b);
-
-/* This is a small bubble sort algorithm to sort the hash table entries in
- * ascending byte order*/
-void hTableSort(h_table_entry **h_table, uint16_t num_entries);
 
 #endif

@@ -257,13 +257,16 @@ void populateHTable(node *root, h_table_entry **h_table,
 
 int compareEnntries(const void *entry_a, const void *entry_b)
 {
-    const h_table_entry * entry_a_sort = entry_a;
-    const h_table_entry * entry_b_sort = entry_b;
-    if (entry_a_sort->byte > entry_b_sort->byte)
+    /* my h_table array is an array of pointers which point to my entry structs
+    this is to get the pointer to that entry struct and keeping it constant*/
+    const h_table_entry *const(*entry_a_sort) = entry_a;
+    const h_table_entry *const(*entry_b_sort) = entry_b;
+    /* comparing the bytes to sort them in ascending order*/
+    if ((*entry_a_sort)->byte < (*entry_b_sort)->byte)
     {
         return -1;
     }
-    else if (entry_a_sort->byte < entry_b_sort->byte)
+    else if ((*entry_a_sort)->byte > (*entry_b_sort)->byte)
     {
         return 1;
     }
@@ -308,6 +311,8 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
     }
 
     /* write byte and frequency*/
+    /* this chunk is not as efficient as possible because of writing single
+     * bytes but it is only for the header (max of 256 entries)*/
     int i;
     uint8_t byte;
     uint32_t frequency;
@@ -374,10 +379,10 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
         uint8_t *tmp;
         bs->size += BITSTREAM_SIZE;
 
-        /* needed to free memory even though allocation failed*/
         tmp = realloc(bs->data, bs->size);
         if (tmp == NULL)
         {
+            /* needed to free memory if allocation failed*/
             free(bs->data);
             exit(EXIT_FAILURE);
         }
@@ -456,15 +461,15 @@ void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
 void writeEncoding(int output_fd, bitstream *bs)
 {
     /* create buffer to write from to file*/
-    uint8_t *buffer = (uint8_t *)malloc((bs->index / 8));
+    /*(bs->index+8-1) / 8 this round up to the next integer*/
+    size_t bytes_to_write = ((bs->index + 8 - 1) / 8);
+    uint8_t *buffer = (uint8_t *)malloc(bytes_to_write);
     if (buffer == NULL)
     {
         exit(EXIT_FAILURE);
     }
 
     /* memcopy to buffer only the bytes that need to be written.*/
-    /*(bs->index+8-1) / 8 this round up to the next integer*/
-    size_t bytes_to_write = ((bs->index + 8 - 1) / 8);
     memcpy(buffer, bs->data, bytes_to_write);
 
     if (write(output_fd, buffer, bytes_to_write) == -1)
@@ -501,6 +506,8 @@ node *readHeader(int input_fd)
     /* number is actually 1 bigger*/
     num++;
 
+    /* this chunk is not as efficient as possible because of reading single
+     * bytes but it is only for the header (max of 256 entries)*/
     for (i = 0; i < num; i++)
     {
         /* read byte value and handle error*/
@@ -533,7 +540,7 @@ ssize_t readBody(int input_fd, bitstream *bs)
     /* variable to return later*/
     ssize_t bytes_read;
 
-    /* UNIX IO read into th bitstream data*/
+    /* UNIX IO read into the bitstream data*/
     bytes_read = read(input_fd, bs->data, BITSTREAM_SIZE);
 
     /* handle reading error*/
@@ -560,6 +567,10 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
     /* helper variables for reading right bit*/
     int byteIndex;
     int bitOffset;
+
+    /* buffer to store bytes in and write to file - initialize to 0*/
+    uint8_t buffer[READ_WRITE_BUFFER_SIZE];
+    int i;
 
     /* first read data into bitstream data*/
     bytes_read = readBody(input_fd, bs);
@@ -601,12 +612,29 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
         }
         else
         {
-            /* write character to output and check error*/
-            if ((write(output_fd, &(current->byte), 1)) == -1)
+
+            /* add byte to buffer*/
+            buffer[byte_count % READ_WRITE_BUFFER_SIZE] = current->byte;
+
+            /* check if buffer is full index is 1 less than size*/
+            if (((byte_count + 1) % (READ_WRITE_BUFFER_SIZE)) == 0)
             {
 
-                perror("Writing Error");
-                exit(EXIT_FAILURE);
+                /* write buffer to output and check error*/
+                /* size to write modulo READ_WRITE_BUFFER_SIZE +1 because index
+                is 1 less than size*/
+                if (write(output_fd, buffer,
+                          (byte_count % READ_WRITE_BUFFER_SIZE) + 1) == -1)
+                {
+
+                    perror("Writing Error");
+                    exit(EXIT_FAILURE);
+                }
+                /* reset values in buffer*/
+                for (i = 0; i < READ_WRITE_BUFFER_SIZE; i++)
+                {
+                    buffer[i] = 0;
+                }
             }
             /* increase byte_count to keep track at when to stop*/
             byte_count++;
@@ -614,5 +642,14 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
             /* reset current position in tree back to root*/
             current = root;
         }
+    }
+    /* write remaining contents of buffer*/
+    /* adding of +1 is no longer needed because byte_count got incremented
+     * 1 more time*/
+    if (write(output_fd, buffer, (byte_count % READ_WRITE_BUFFER_SIZE)) == -1)
+    {
+
+        perror("Writing Error");
+        exit(EXIT_FAILURE);
     }
 }

@@ -35,8 +35,8 @@ clean:
 	rm *.o
 
 test: all
-	echo Testing $(MAIN)
-	./$(MAIN) <input >output
-	$(MAIN) <input >reference
-	diff output reference
+	echo Testing hencode & hdecode
+	./hencode input output
+	./hdecode output reference
+	diff input reference
 	echo done.

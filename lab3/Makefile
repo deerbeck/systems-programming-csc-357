@@ -28,8 +28,5 @@ clean:
 	rm *.o
 
 test: all
-	echo Testing $(MAIN)
-	./$(MAIN) <input >output
-	$(MAIN) <input >reference
-	diff output reference
-	echo done.
+	echo Testing htable
+	./htable input

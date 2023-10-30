@@ -64,60 +64,37 @@ node *createNode(char byte, int freq)
 node *insertSorted(node *head, node *new_node)
 {
     /* create buffer node pointers*/
-    node *previous;
-    node *current;
+    node *temp_node;
 
-    /* if list is empty start with new_node as head*/
-    if (head == NULL)
-    {
-        head = new_node;
-    }
-    /* switch head to new_node, if frequency is smaller than head*/
-    else if (head->freq > new_node->freq)
+    /* if list is empty or heads frequency is bigger start with new_node as
+     * head*/
+    if (!head || head->freq > new_node->freq)
     {
         new_node->next = head;
-        return new_node;
+        head = new_node;
     }
-    /* if new_node frequency is bigger than head frequency iterate through the
-     * list and insert in the right place*/
     else
     {
-        previous = NULL;
-        current = head;
-        if (current->freq == new_node->freq && new_node->byte < current->byte)
-        {
-            new_node->next = current;
-            return new_node;
-        }
-        /* iterate through nodes until the spot between nodes is found if node
-        is null insert new node at the end of linked list*/
-        while ((current != NULL))
-        {
-            /* continue going through linked list if frequency is still bigger*/
-            if (current->freq < new_node->freq)
-            {
-                previous = current;
-                current = previous->next;
-            }
-            /* if frequenccy is the same apply tiebraker convention and insert
-             * according to the byte avlue*/
-            else if ((current->freq == new_node->freq) &&
-                     ((current->byte < new_node->byte)))
-            {
-                previous = current;
-                current = previous->next;
-            }
-            /* stop if spot inside of linked list is found*/
-            else
-            {
-                break;
-            }
-        }
-        /* swap nodes and insert new node*/
-        previous->next = new_node;
-        new_node->next = current;
-    }
+        /* first sort for frequency*/
+        for (temp_node = head;
+             temp_node->next && temp_node->next->freq < new_node->freq;
+             temp_node = temp_node->next)
+            ;
+        /* wheee hopefully*/
 
+        /* now sort for bytes*/
+
+        for (temp_node = temp_node;
+             temp_node->next && temp_node->next->byte < new_node->byte &&
+             temp_node->next->freq == new_node->freq;
+             temp_node = temp_node->next)
+            ;
+        /* wheee again*/
+
+        /* finaly do the insert*/
+        new_node->next = temp_node->next;
+        temp_node->next = new_node;
+    }
     return head;
 }
 
@@ -246,7 +223,7 @@ void populateHTable(node *root, h_table_entry **h_table,
 
     /* else traverse further into tree*/
     /* creating two new path variables for new path to go*/
-    char leftPath[256], rightPath[256];
+    char leftPath[NUM_POSSIB_BYTES], rightPath[NUM_POSSIB_BYTES];
     strcpy(leftPath, path);
     strcpy(rightPath, path);
     strcat(leftPath, "0");

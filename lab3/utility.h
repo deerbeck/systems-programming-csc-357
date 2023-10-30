@@ -108,5 +108,4 @@ void populateHTable(node *root, h_table_entry **h_table,
 /* This function exists to be used in the qsort algorithm to sort the h_table
  * according to the byte values.*/
 int compareEnntries(const void *entry_a, const void *entry_b);
-
 #endif

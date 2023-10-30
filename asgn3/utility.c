@@ -48,6 +48,7 @@ node *createNode(char byte, int freq)
     node *new_node = (node *)malloc(sizeof(node));
     if (new_node == NULL)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
 
@@ -64,60 +65,37 @@ node *createNode(char byte, int freq)
 node *insertSorted(node *head, node *new_node)
 {
     /* create buffer node pointers*/
-    node *previous;
-    node *current;
+    node *temp_node;
 
-    /* if list is empty start with new_node as head*/
-    if (head == NULL)
-    {
-        head = new_node;
-    }
-    /* switch head to new_node, if frequency is smaller than head*/
-    else if (head->freq > new_node->freq)
+    /* if list is empty or heads frequency is bigger start with new_node as
+     * head*/
+    if (!head || head->freq > new_node->freq)
     {
         new_node->next = head;
-        return new_node;
+        head = new_node;
     }
-    /* if new_node frequency is bigger than head frequency iterate through the
-     * list and insert in the right place*/
     else
     {
-        previous = NULL;
-        current = head;
-        if (current->freq == new_node->freq && new_node->byte < current->byte)
-        {
-            new_node->next = current;
-            return new_node;
-        }
-        /* iterate through nodes until the spot between nodes is found if node
-        is null insert new node at the end of linked list*/
-        while ((current != NULL))
-        {
-            /* continue going through linked list if frequency is still bigger*/
-            if (current->freq < new_node->freq)
-            {
-                previous = current;
-                current = previous->next;
-            }
-            /* if frequenccy is the same apply tiebraker convention and insert
-             * according to the byte avlue*/
-            else if ((current->freq == new_node->freq) &&
-                     ((current->byte < new_node->byte)))
-            {
-                previous = current;
-                current = previous->next;
-            }
-            /* stop if spot inside of linked list is found*/
-            else
-            {
-                break;
-            }
-        }
-        /* swap nodes and insert new node*/
-        previous->next = new_node;
-        new_node->next = current;
-    }
+        /* first sort for frequency*/
+        for (temp_node = head;
+             temp_node->next && temp_node->next->freq < new_node->freq;
+             temp_node = temp_node->next)
+            ;
+        /* wheee hopefully*/
 
+        /* now sort for bytes*/
+
+        for (temp_node = temp_node;
+             temp_node->next && temp_node->next->byte < new_node->byte &&
+             temp_node->next->freq == new_node->freq;
+             temp_node = temp_node->next)
+            ;
+        /* wheee again*/
+
+        /* finaly do the insert*/
+        new_node->next = temp_node->next;
+        temp_node->next = new_node;
+    }
     return head;
 }
 
@@ -246,7 +224,7 @@ void populateHTable(node *root, h_table_entry **h_table,
 
     /* else traverse further into tree*/
     /* creating two new path variables for new path to go*/
-    char leftPath[256], rightPath[256];
+    char leftPath[NUM_POSSIB_BYTES], rightPath[NUM_POSSIB_BYTES];
     strcpy(leftPath, path);
     strcpy(rightPath, path);
     strcat(leftPath, "0");
@@ -274,35 +252,17 @@ int compareEnntries(const void *entry_a, const void *entry_b)
     return 0;
 }
 
-void hTableSort(h_table_entry **h_table, uint16_t num_entries)
-{
-    int swapped;
-    int i;
-    do
-    {
-        swapped = 0;
-        for (i = 1; i < num_entries; i++)
-        {
-            if ((h_table[i - 1]->byte) > (h_table[i]->byte))
-            {
-
-                /* Swap h_table[i-1] and h_table[i]*/
-                h_table_entry *temp = h_table[i - 1];
-                h_table[i - 1] = h_table[i];
-                h_table[i] = temp;
-
-                /* Set the flag to true to continue sorting*/
-                swapped = 1;
-            }
-        }
-    } while (swapped);
-}
-
 void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
 {
+
+    /* sizes of header properties are given in specification:
+     * 1 byte for num
+     * then for each byte = 1 byte and frequency = 4 bytes*/
     /* write num to header*/
     int bytes_written;
+    /* num is 1 smaller to fit in a byte*/
     uint8_t num = num_entries - 1;
+    /* write only 1 byte to header (num of entries)*/
     bytes_written = write(output_fd, &num, 1);
     if (bytes_written == -1)
     {
@@ -322,7 +282,7 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
         {
             /* get byte value represented as index and convert back to uchar*/
             byte = (uint8_t)i;
-            /* write using UNIX IO write()*/
+            /* write only 1 byte (size of character)*/
             bytes_written = write(output_fd, &byte, 1);
             if (bytes_written == -1)
             {
@@ -332,7 +292,8 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
 
             /* convert frequency to network byte order*/
             frequency = htonl(histogram[i]);
-            /* write using UNIX IO write()*/
+            /* write 4 bytes (size of frequency as specified in
+             * specification)*/
             bytes_written = write(output_fd, &frequency, 4);
             if (bytes_written == -1)
             {
@@ -351,13 +312,22 @@ bitstream *createBitstream()
     /* check for memory allocation error*/
     if (bs == NULL)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
+
     /* initialize data array with set arbitrary size*/
     bs->data = (uint8_t *)malloc(BITSTREAM_SIZE);
+    if (bs->data == NULL)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
 
     /* set newly allocated memory to 0. This takes care of the needed
      * padding if last byte won't be filled completely*/
+    /* I know I don't have to set my whole bitstream to 0, but this makes
+     * it easy and convinient to take car of in 1 go*/
     int i;
     for (i = 0; i < BITSTREAM_SIZE; i++)
     {
@@ -384,12 +354,15 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
         {
             /* needed to free memory if allocation failed*/
             free(bs->data);
+            perror("realloc");
             exit(EXIT_FAILURE);
         }
         bs->data = tmp;
 
         /* set newly allocated memory to 0. This takes care of the needed
          * padding if last byte won't be filled completely*/
+        /* I know I don't have to set my whole bitstream to 0, but this makes
+         * it easy and convinient to take car of in 1 go*/
         int i;
         for (i = (bs->index / 8); i < bs->size; i++)
         {
@@ -466,6 +439,7 @@ void writeEncoding(int output_fd, bitstream *bs)
     uint8_t *buffer = (uint8_t *)malloc(bytes_to_write);
     if (buffer == NULL)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
 

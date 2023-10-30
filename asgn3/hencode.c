@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     /* handle missing input file*/
     if (argc == 1)
     {
-        fprintf(stderr,"Usage: %s <input_file> [<output_file>]", argv[0]);
+        fprintf(stderr, "Usage: %s <input_file> [<output_file>]", argv[0]);
         exit(EXIT_FAILURE);
     }
 

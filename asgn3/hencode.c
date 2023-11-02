@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     /* handle missing input file*/
     if (argc == 1)
     {
-        printf("Usage: %s <input_file> [<output_file>]", argv[0]);
+        fprintf(stderr, "Usage: %s <input_file> [<output_file>]", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
         if (input_fd == -1)
         {
-            perror(argv[1]);
+            perror("close");
             exit(EXIT_FAILURE);
         }
         /* if output file provided open it and handle occuring error while
@@ -40,7 +40,11 @@ int main(int argc, char *argv[])
             {
                 perror(argv[2]);
                 /* close input file before exiting*/
-                close(input_fd);
+                if (close(input_fd) == -1)
+                {
+                    perror("close");
+                    exit(EXIT_FAILURE);
+                }
                 exit(EXIT_FAILURE);
             }
         }
@@ -53,7 +57,7 @@ int main(int argc, char *argv[])
     node *head = linkedList(hist);
 
     /* if file is empty the head is gonna be NULL -> */
-    if (!head)
+    if (head == NULL)
     {
         /* when no content is detected in the file open() just creates an empty
          * file as intended*/
@@ -62,8 +66,17 @@ int main(int argc, char *argv[])
         /* free memory of histogram*/
         free(hist);
         /*close input and output file*/
-        close(input_fd);
-        close(output_fd);
+        /*close input and output file*/
+        if (close(input_fd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
+        }
+        if (close(output_fd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
+        }
         return 0;
     }
 
@@ -90,17 +103,12 @@ int main(int argc, char *argv[])
     /* create h_table from binary tree*/
     /* index and path variables needed for initialization of the function*/
     int index = 0;
-    char path[256] = "";
+    char path[NUM_POSSIB_BYTES] = "";
     populateHTable(root, h_table, path, &index);
 
     /* sort h_table in ascending order of the byte values*/
-    hTableSort(h_table, num);
-/*     int bsi;
-    for(bsi = 0; bsi<num; bsi++)
-    {
-        printf("%x ",h_table[bsi]->byte);
-    }
- */
+    qsort(h_table, num, sizeof(h_table_entry *), compareEnntries);
+
     /* apply header to output*/
     writeHeader(output_fd, hist, num);
 
@@ -135,8 +143,15 @@ int main(int argc, char *argv[])
     /* free memory of histogram*/
     free(hist);
     /*close input and output file*/
-    close(input_fd);
-    close(output_fd);
-
+    if (close(input_fd) == -1)
+    {
+        perror("close");
+        exit(EXIT_FAILURE);
+    }
+    if (close(output_fd) == -1)
+    {
+        perror("close");
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }

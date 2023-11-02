@@ -8,12 +8,12 @@
 int main(int argc, char *argv[])
 {
     /* input file has to be given for encoding*/
-    FILE *input_fd;
+    int input_fd;
 
     /* handle missing input file*/
     if (argc != 2)
     {
-        printf("Usage: %s <input_file>", argv[0]);
+        fprintf(stderr,"Usage: %s <input_file>", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     node *head = linkedList(hist);
 
     /* if file is empty the head is gonna be NULL -> */
-    if (!head)
+    if (head == NULL)
     {
         /* when no content is detected in the file open() just creates an empty
          * file as intended*/
@@ -44,8 +44,12 @@ int main(int argc, char *argv[])
         /* linked list does not have to be freed because no node was created*/
         /* free memory of histogram*/
         free(hist);
-        /*close input and output file*/
-        close(input_fd);
+        /*close input file*/
+        if (close(input_fd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
+        }
         return 0;
     }
 
@@ -72,16 +76,17 @@ int main(int argc, char *argv[])
     /* create h_table from binary tree*/
     /* index and path variables needed for initialization of the function*/
     int index = 0;
-    char path[256] = "";
+    char path[NUM_POSSIB_BYTES] = "";
     populateHTable(root, h_table, path, &index);
 
     /* sort h_table in ascending order of the byte values*/
-    hTableSort(h_table, num);
+    qsort(h_table, num, sizeof(h_table_entry *), compareEnntries);
 
     int h_index;
     for (h_index = 0; h_index < num; h_index++)
     {
-        printf("0x%x : %s\n", h_table[h_index]->byte, h_table[h_index]->encoding);
+        printf("0x%02x: %s\n", h_table[h_index]->byte,
+               h_table[h_index]->encoding);
     }
 
     /* free memory*/
@@ -89,6 +94,18 @@ int main(int argc, char *argv[])
     freeBinaryTree(root);
     /* free histogram*/
     free(hist);
+    /* free h_table contents*/
+    for (i = 0; i < num; i++)
+    {
+        free(h_table[i]);
+    }
+
     /*close input and output file*/
-    close(input_fd);
+    if (close(input_fd) == -1)
+    {
+        perror(argv[1]);
+        exit(EXIT_FAILURE);
+    }
+
+    return 0;
 }

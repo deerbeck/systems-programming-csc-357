@@ -8,9 +8,8 @@ LDFLAGS =
 
 OBJSE = hencode.o utility.o
 OBJSD = hdecode.o utility.o
-OBJST = htable.o utility.o
 
-all: hencode hdecode htable
+all: hencode hdecode 
 	
 hencode: $(OBJSE)
 	echo Building hencode
@@ -19,10 +18,6 @@ hencode: $(OBJSE)
 hdecode: $(OBJSD)
 	echo Building hdecode
 	$(LD) $(LDFLAGS) -o hdecode $(OBJSD)
-	
-htable: $(OBJST)
-	echo Building htable
-	$(LD) $(LDFLAGS) -o htable $(OBJST)
 
 hencode.o: hencode.c utility.h
 	echo Building hencode
@@ -32,10 +27,6 @@ hdecode.o: hdecode.c utility.h
 	echo Building hdecode
 	$(CC) $(CFLAGS) -c hdecode.c
 
-htable.o: htable.c utility.h
-	echo Building htable
-	$(CC) $(CFLAGS) -c htable.c
-
 utility.o: utility.c utility.h
 	echo Building utility
 	$(CC) $(CFLAGS) -c utility.c
@@ -44,8 +35,8 @@ clean:
 	rm *.o
 
 test: all
-	echo Testing $(MAIN)
-	./$(MAIN) <input >output
-	$(MAIN) <input >reference
-	diff output reference
+	echo Testing hencode & hdecode
+	./hencode input output
+	./hdecode output reference
+	diff input reference
 	echo done.

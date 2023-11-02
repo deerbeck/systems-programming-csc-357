@@ -18,7 +18,6 @@ int main(int argc, char *argv[])
         if (*argv[1] != '-')
         {
             input_fd = open(argv[1], O_RDONLY);
-
             if (input_fd == -1)
             {
                 perror(argv[1]);
@@ -36,7 +35,11 @@ int main(int argc, char *argv[])
             {
                 perror(argv[2]);
                 /* close input file before exiting*/
-                close(input_fd);
+                if (close(input_fd) == -1)
+                {
+                    perror("close");
+                    exit(EXIT_FAILURE);
+                }
                 exit(EXIT_FAILURE);
             }
         }
@@ -48,12 +51,22 @@ int main(int argc, char *argv[])
     {
         /* exit because of empty file*/
         /* close input and output file*/
-        close(input_fd);
-        close(output_fd);
+        /*close input and output file*/
+        if (close(input_fd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
+        }
+        if (close(output_fd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
+        }
         return 0;
     }
 
-    /* get number of bytes that are compressed (basically filesize)*/
+    /* get number of bytes that are compressed (basically filesize) exlcuding
+    header*/
     uint32_t tot_bytes = 0;
     node *count_node = head;
     while (count_node)
@@ -82,8 +95,16 @@ int main(int argc, char *argv[])
     freeBinaryTree(root);
 
     /*close input and output file*/
-    close(input_fd);
-    close(output_fd);
+    if (close(input_fd) == -1)
+    {
+        perror("close");
+        exit(EXIT_FAILURE);
+    }
+    if (close(output_fd) == -1)
+    {
+        perror("close");
+        exit(EXIT_FAILURE);
+    }
 
     return 0;
 }

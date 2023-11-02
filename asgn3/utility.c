@@ -48,6 +48,7 @@ node *createNode(char byte, int freq)
     node *new_node = (node *)malloc(sizeof(node));
     if (new_node == NULL)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
 
@@ -64,52 +65,37 @@ node *createNode(char byte, int freq)
 node *insertSorted(node *head, node *new_node)
 {
     /* create buffer node pointers*/
-    node *previous;
-    node *current;
+    node *temp_node;
 
-    /* if list is empty start with new_node as head*/
-    if (!head)
-    {
-        head = new_node;
-    }
-    /* switch head to new_node, if frequency is smaller than head*/
-    else if (head->freq > new_node->freq)
+    /* if list is empty or heads frequency is bigger start with new_node as
+     * head*/
+    if (!head || head->freq > new_node->freq)
     {
         new_node->next = head;
-        return new_node;
+        head = new_node;
     }
-    /* if new_node frequency is bigger than head frequency iterate through the
-     * list and insert in the right place*/
     else
     {
-        previous = NULL;
-        current = head;
-        /* iterate through nodes until the spot between nodes is found*/
-        /* tiebreaker convention automatically applies, because my histogram is
-         * sorted in ascending byte order*/
-        while ((current != NULL))
-        {
-            if (current->freq < new_node->freq)
-            {
-                previous = current;
-                current = previous->next;
-            }
-            else if ((current->freq == new_node->freq) &&
-                     ((current->byte < new_node->byte)))
-            {
-                previous = current;
-                current = previous->next;
-            }
-            else
-            {
-                break;
-            }
-        }
-        /* swap nodes and insert new node*/
-        previous->next = new_node;
-        new_node->next = current;
-    }
+        /* first sort for frequency*/
+        for (temp_node = head;
+             temp_node->next && temp_node->next->freq < new_node->freq;
+             temp_node = temp_node->next)
+            ;
+        /* wheee hopefully*/
 
+        /* now sort for bytes*/
+
+        for (temp_node = temp_node;
+             temp_node->next && temp_node->next->byte < new_node->byte &&
+             temp_node->next->freq == new_node->freq;
+             temp_node = temp_node->next)
+            ;
+        /* wheee again*/
+
+        /* finaly do the insert*/
+        new_node->next = temp_node->next;
+        temp_node->next = new_node;
+    }
     return head;
 }
 
@@ -214,10 +200,10 @@ void freeBinaryTree(node *root)
         freeBinaryTree(root->left_ch);
         freeBinaryTree(root->right_ch);
     }
-    /* if leaf is reached free that leaf and set to null*/
+    /* if leaf is reached free that leaf and set to null so parents become new
+    leaf*/
     free(root);
     root = NULL;
-    /* so parents become new leaf*/
     return;
 }
 
@@ -238,7 +224,7 @@ void populateHTable(node *root, h_table_entry **h_table,
 
     /* else traverse further into tree*/
     /* creating two new path variables for new path to go*/
-    char leftPath[256], rightPath[256];
+    char leftPath[NUM_POSSIB_BYTES], rightPath[NUM_POSSIB_BYTES];
     strcpy(leftPath, path);
     strcpy(rightPath, path);
     strcat(leftPath, "0");
@@ -247,35 +233,36 @@ void populateHTable(node *root, h_table_entry **h_table,
     populateHTable(root->right_ch, h_table, rightPath, index);
 }
 
-void hTableSort(h_table_entry **h_table, uint16_t num_entries)
+int compareEnntries(const void *entry_a, const void *entry_b)
 {
-    int swapped;
-    int i;
-    do
+    /* my h_table array is an array of pointers which point to my entry structs
+    this is to get the pointer to that entry struct and keeping it constant*/
+    const h_table_entry *const(*entry_a_sort) = entry_a;
+    const h_table_entry *const(*entry_b_sort) = entry_b;
+    /* comparing the bytes to sort them in ascending order*/
+    if ((*entry_a_sort)->byte < (*entry_b_sort)->byte)
     {
-        swapped = 0;
-        for (i = 1; i < num_entries; i++)
-        {
-            if ((h_table[i - 1]->byte) > (h_table[i]->byte))
-            {
+        return -1;
+    }
+    else if ((*entry_a_sort)->byte > (*entry_b_sort)->byte)
+    {
+        return 1;
+    }
 
-                /* Swap h_table[i-1] and h_table[i]*/
-                h_table_entry *temp = h_table[i - 1];
-                h_table[i - 1] = h_table[i];
-                h_table[i] = temp;
-
-                /* Set the flag to true to continue sorting*/
-                swapped = 1;
-            }
-        }
-    } while (swapped);
+    return 0;
 }
 
 void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
 {
+
+    /* sizes of header properties are given in specification:
+     * 1 byte for num
+     * then for each byte = 1 byte and frequency = 4 bytes*/
     /* write num to header*/
     int bytes_written;
+    /* num is 1 smaller to fit in a byte*/
     uint8_t num = num_entries - 1;
+    /* write only 1 byte to header (num of entries)*/
     bytes_written = write(output_fd, &num, 1);
     if (bytes_written == -1)
     {
@@ -284,6 +271,8 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
     }
 
     /* write byte and frequency*/
+    /* this chunk is not as efficient as possible because of writing single
+     * bytes but it is only for the header (max of 256 entries)*/
     int i;
     uint8_t byte;
     uint32_t frequency;
@@ -293,6 +282,7 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
         {
             /* get byte value represented as index and convert back to uchar*/
             byte = (uint8_t)i;
+            /* write only 1 byte (size of character)*/
             bytes_written = write(output_fd, &byte, 1);
             if (bytes_written == -1)
             {
@@ -302,6 +292,8 @@ void writeHeader(int output_fd, int *histogram, uint16_t num_entries)
 
             /* convert frequency to network byte order*/
             frequency = htonl(histogram[i]);
+            /* write 4 bytes (size of frequency as specified in
+             * specification)*/
             bytes_written = write(output_fd, &frequency, 4);
             if (bytes_written == -1)
             {
@@ -320,16 +312,28 @@ bitstream *createBitstream()
     /* check for memory allocation error*/
     if (bs == NULL)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
+
     /* initialize data array with set arbitrary size*/
     bs->data = (uint8_t *)malloc(BITSTREAM_SIZE);
-    /* set all of the data to 0*/
+    if (bs->data == NULL)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    /* set newly allocated memory to 0. This takes care of the needed
+     * padding if last byte won't be filled completely*/
+    /* I know I don't have to set my whole bitstream to 0, but this makes
+     * it easy and convinient to take car of in 1 go*/
     int i;
     for (i = 0; i < BITSTREAM_SIZE; i++)
     {
         bs->data[i] = 0;
     }
+
     bs->size = BITSTREAM_SIZE;
     /* set current cursor index to 0*/
     bs->index = 0;
@@ -344,14 +348,21 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
         /* resize bitstream data and handle any occuring error*/
         uint8_t *tmp;
         bs->size += BITSTREAM_SIZE;
+
         tmp = realloc(bs->data, bs->size);
         if (tmp == NULL)
         {
+            /* needed to free memory if allocation failed*/
             free(bs->data);
+            perror("realloc");
             exit(EXIT_FAILURE);
         }
         bs->data = tmp;
-        /* set newly allocated memory to 0*/
+
+        /* set newly allocated memory to 0. This takes care of the needed
+         * padding if last byte won't be filled completely*/
+        /* I know I don't have to set my whole bitstream to 0, but this makes
+         * it easy and convinient to take car of in 1 go*/
         int i;
         for (i = (bs->index / 8); i < bs->size; i++)
         {
@@ -365,10 +376,12 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
     /* set the bit at the current index*/
     if (!bit)
     {
+        /* set bit to 0*/
         bs->data[byteIndex] &= ~(0 << (7 - bitOffset));
     }
     else
     {
+        /* set bit to 1*/
         bs->data[byteIndex] |= (1 << (7 - bitOffset));
     }
 
@@ -383,9 +396,9 @@ void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
     int d_index;
 
     char bit;
-
     ssize_t bytes_read;
     uint8_t buffer[READ_WRITE_BUFFER_SIZE];
+    /* while not reaching EOF keep reading*/
     while ((bytes_read = read(input_fd, buffer, READ_WRITE_BUFFER_SIZE)))
     {
         /* handle error while reading*/
@@ -421,15 +434,16 @@ void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
 void writeEncoding(int output_fd, bitstream *bs)
 {
     /* create buffer to write from to file*/
-    uint8_t *buffer = (uint8_t *)malloc((bs->index / 8));
+    /*(bs->index+8-1) / 8 this round up to the next integer*/
+    size_t bytes_to_write = ((bs->index + 8 - 1) / 8);
+    uint8_t *buffer = (uint8_t *)malloc(bytes_to_write);
     if (buffer == NULL)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
 
     /* memcopy to buffer only the bytes that need to be written.*/
-    /*(bs->index+8-1) / 8 this round up to the next integer*/
-    size_t bytes_to_write = ((bs->index + 8 - 1) / 8);
     memcpy(buffer, bs->data, bytes_to_write);
 
     if (write(output_fd, buffer, bytes_to_write) == -1)
@@ -457,15 +471,17 @@ node *readHeader(int input_fd)
         perror("Reading Error");
         exit(EXIT_FAILURE);
     }
-    else if(bytes_read == 0)
+    /* file is empty*/
+    else if (bytes_read == 0)
     {
-        /* empty file coverage*/
         return head;
     }
 
     /* number is actually 1 bigger*/
     num++;
 
+    /* this chunk is not as efficient as possible because of reading single
+     * bytes but it is only for the header (max of 256 entries)*/
     for (i = 0; i < num; i++)
     {
         /* read byte value and handle error*/
@@ -484,46 +500,62 @@ node *readHeader(int input_fd)
         /* convert frequency back to hostbyte order*/
         frequency = ntohl(frequency);
 
+        /* create new node corresponding to the read byte and frequency and
+        insert into linked List accordingly*/
         node *new_node = createNode(byte, frequency);
-
         head = insertSorted(head, new_node);
     }
-
+    /* return head of the linked list*/
     return head;
 }
 
 ssize_t readBody(int input_fd, bitstream *bs)
 {
+    /* variable to return later*/
     ssize_t bytes_read;
 
+    /* UNIX IO read into the bitstream data*/
     bytes_read = read(input_fd, bs->data, BITSTREAM_SIZE);
 
+    /* handle reading error*/
     if (bytes_read == -1)
     {
         perror("Reading Error");
         exit(EXIT_FAILURE);
     }
+    /* reset Bitstream index*/
     bs->index = 0;
 
     return bytes_read;
 }
+
 void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
                 uint32_t total_bytes)
 {
+    /* num of bytes that have been read by UNIX IO read()*/
     ssize_t bytes_read;
+    /* start node is the root of the binary tree*/
     node *current = root;
+    /* byte_count to keep track of bytes to be written*/
     uint32_t byte_count = 0;
     /* helper variables for reading right bit*/
     int byteIndex;
     int bitOffset;
 
+    /* buffer to store bytes in and write to file - initialize to 0*/
+    uint8_t buffer[READ_WRITE_BUFFER_SIZE];
+    int i;
+
+    /* first read data into bitstream data*/
     bytes_read = readBody(input_fd, bs);
 
-    /* read into buffer the size of the bitstream array*/
+    /* loop until number of total_bytes is reached*/
     while (byte_count < (total_bytes))
     {
+        /* bytes read * 8 == bits read*/
         if (bs->index >= (bytes_read * 8))
         {
+            /* get new data if end of buffer is reached*/
             bytes_read = readBody(input_fd, bs);
         }
 
@@ -531,11 +563,14 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
         {
             /* current byte we are working on*/
             byteIndex = bs->index / 8;
+
             /* current bit in byte to be checked 8- (indx+1) 8- because of
-             * order of bits (left to right given through encodeng) and +1
+             * order of bits (left to right given through encoding) and +1
              * because for bit operation the index does not start at 0 but
              * at 1*/
             bitOffset = (8 - ((bs->index % 8) + 1));
+            /* increment index to bit*/
+
             bs->index++;
             /* check if bit at offset location is 1 and traverse tree to
              * right child accordingly*/
@@ -543,6 +578,7 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
             {
                 current = current->right_ch;
             }
+            /* else traverse to the left_child*/
             else
             {
                 current = current->left_ch;
@@ -550,12 +586,29 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
         }
         else
         {
-            /* write character to output and check error*/
-            if ((write(output_fd, &(current->byte), 1)) == -1)
+
+            /* add byte to buffer*/
+            buffer[byte_count % READ_WRITE_BUFFER_SIZE] = current->byte;
+
+            /* check if buffer is full index is 1 less than size*/
+            if (((byte_count + 1) % (READ_WRITE_BUFFER_SIZE)) == 0)
             {
 
-                perror("Writing Error");
-                exit(EXIT_FAILURE);
+                /* write buffer to output and check error*/
+                /* size to write modulo READ_WRITE_BUFFER_SIZE +1 because index
+                is 1 less than size*/
+                if (write(output_fd, buffer,
+                          (byte_count % READ_WRITE_BUFFER_SIZE) + 1) == -1)
+                {
+
+                    perror("Writing Error");
+                    exit(EXIT_FAILURE);
+                }
+                /* reset values in buffer*/
+                for (i = 0; i < READ_WRITE_BUFFER_SIZE; i++)
+                {
+                    buffer[i] = 0;
+                }
             }
             /* increase byte_count to keep track at when to stop*/
             byte_count++;
@@ -563,5 +616,14 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
             /* reset current position in tree back to root*/
             current = root;
         }
+    }
+    /* write remaining contents of buffer*/
+    /* adding of +1 is no longer needed because byte_count got incremented
+     * 1 more time*/
+    if (write(output_fd, buffer, (byte_count % READ_WRITE_BUFFER_SIZE)) == -1)
+    {
+
+        perror("Writing Error");
+        exit(EXIT_FAILURE);
     }
 }

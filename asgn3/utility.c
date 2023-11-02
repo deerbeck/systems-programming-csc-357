@@ -326,15 +326,16 @@ bitstream *createBitstream()
 
     /* set newly allocated memory to 0. This takes care of the needed
      * padding if last byte won't be filled completely*/
-    /* I know I don't have to set my whole bitstream to 0, but this makes
-     * it easy and convinient to take car of in 1 go*/
+    /* I know I don't have to set my whole bitstream to 0, but this makes it
+     * easy and convinient to take care of in 1 go while i'm at initializing*/
     int i;
     for (i = 0; i < BITSTREAM_SIZE; i++)
     {
         bs->data[i] = 0;
     }
-
+    /* adjust bitstream size*/
     bs->size = BITSTREAM_SIZE;
+
     /* set current cursor index to 0*/
     bs->index = 0;
     return bs;
@@ -362,7 +363,8 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
         /* set newly allocated memory to 0. This takes care of the needed
          * padding if last byte won't be filled completely*/
         /* I know I don't have to set my whole bitstream to 0, but this makes
-         * it easy and convinient to take car of in 1 go*/
+         * it easy and convinient to take care of in 1 go while i'm at
+         * initializing*/
         int i;
         for (i = (bs->index / 8); i < bs->size; i++)
         {
@@ -374,15 +376,12 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
     int bitOffset = bs->index % 8;
 
     /* set the bit at the current index*/
-    if (!bit)
-    {
-        /* set bit to 0*/
-        bs->data[byteIndex] &= ~(0 << (7 - bitOffset));
-    }
-    else
+    if (bit)
     {
         /* set bit to 1*/
         bs->data[byteIndex] |= (1 << (7 - bitOffset));
+        /* bit only needs to be set, becuase bitstreams bytes are all
+         * initialized to 0*/
     }
 
     /* increment index*/
@@ -392,12 +391,16 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
 void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
                       int num_entries, bitstream *bs)
 {
+    /* index variables ->c_index = current to read character position and 
+     * d_index = current encoding position*/
     int c_index;
     int d_index;
 
-    char bit;
+    /* current bit to write*/
+    unsigned char bit;
     ssize_t bytes_read;
     uint8_t buffer[READ_WRITE_BUFFER_SIZE];
+
     /* while not reaching EOF keep reading*/
     while ((bytes_read = read(input_fd, buffer, READ_WRITE_BUFFER_SIZE)))
     {
@@ -407,15 +410,18 @@ void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
             perror("Reading Error");
             exit(EXIT_FAILURE);
         }
+
         /* loop through buffered variable handle each byte*/
         for (c_index = 0; c_index < bytes_read; c_index++)
         {
-            /* loop though the encoding of provided character and */
+            /* loop though the encoding of provided character*/
             /* encoding is located at index = character*/
             for (d_index = 0;
                  (bit = h_lookup[buffer[c_index]]->encoding[d_index]);
                  d_index++)
             {
+                /* you can skip 0 in theory because bitstream is initialized to
+                0, but this makes it more readeable for me*/
                 if (bit == '0')
                 {
                     /* write 0 bit to bitstream*/
@@ -433,26 +439,16 @@ void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
 
 void writeEncoding(int output_fd, bitstream *bs)
 {
-    /* create buffer to write from to file*/
-    /*(bs->index+8-1) / 8 this round up to the next integer*/
+    /* get the nuber of actual bytes to write to file
+     * (bs->index+8-1) / 8 this round up to the next integer*/
     size_t bytes_to_write = ((bs->index + 8 - 1) / 8);
-    uint8_t *buffer = (uint8_t *)malloc(bytes_to_write);
-    if (buffer == NULL)
-    {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
 
-    /* memcopy to buffer only the bytes that need to be written.*/
-    memcpy(buffer, bs->data, bytes_to_write);
-
-    if (write(output_fd, buffer, bytes_to_write) == -1)
+    /* write and handle error*/
+    if (write(output_fd, bs->data, bytes_to_write) == -1)
     {
         perror("Writing error");
         exit(EXIT_FAILURE);
     }
-    /* free buffer again*/
-    free(buffer);
 }
 
 node *readHeader(int input_fd)
@@ -559,6 +555,7 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
             bytes_read = readBody(input_fd, bs);
         }
 
+        /* check if we can still traverse to childs*/
         if (current->left_ch && current->right_ch)
         {
             /* current byte we are working on*/
@@ -584,6 +581,7 @@ void decodeBody(int input_fd, int output_fd, node *root, bitstream *bs,
                 current = current->left_ch;
             }
         }
+        /* leaf is reached*/
         else
         {
 

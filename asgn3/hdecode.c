@@ -65,8 +65,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    /* get number of bytes that are compressed (basically filesize) exlcuding
-    header*/
+    /* get number of bytes that are compressed*/
     uint32_t tot_bytes = 0;
     node *count_node = head;
     while (count_node)

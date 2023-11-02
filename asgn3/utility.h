@@ -131,7 +131,7 @@ struct bitstream_st
 };
 typedef struct bitstream_st bitstream;
 
-/* Helper function to initialize the bitstream and store some initail data
+/* Helper function to initialize the bitstream and store some initial data
  * in it.
  * Arguments:
  * Return pointer to initialized bitstream struct*/

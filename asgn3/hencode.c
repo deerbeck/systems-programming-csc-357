@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
         h_lookup[h_table[i]->byte] = h_table[i];
     }
 
-    /* apply encoding to output*/
+    /* apply encoding to input file and store in bitstream*/
     generateEncoding(input_fd, output_fd, h_lookup, num, bs);
 
     /* write bitstream to output file*/

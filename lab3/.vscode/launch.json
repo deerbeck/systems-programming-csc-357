@@ -9,7 +9,7 @@
         "request": "launch",
         "program": "${workspaceFolder}/htable",
         "args": [
-            "input"
+            "book-war-and-peace", ">out"
         ],
         "stopAtEntry": false,
         "cwd": "${fileDirname}",

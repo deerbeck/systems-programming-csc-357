@@ -16,45 +16,58 @@
 int main(int argc, char *argv[])
 {
     /* initialize variables*/
-    DIR *parent_dirp;
-    struct dirent *parent_entry;
-    struct stat current_stat, parent_stat;
+    DIR *current_dirp;
+    struct dirent *current_entry;
+    struct stat child_stat, current_stat, root_stat;
     int path_length = 0;
+
     /* PATH_MAX +1 to include nullterminator*/
     /* use to not need to nullterminate string*/
     char *path_name = (char *)calloc(PATH_MAX + 1, 1);
     if (path_name == NULL)
     {
-        perror("memory allocation error");
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    /* get the root stat to check if root was reached*/
+    if (stat("/", &root_stat) == -1)
+    {
+        perror("stat");
         exit(EXIT_FAILURE);
     }
 
     /* traverse back in the directories*/
     while (1)
     {
-        /* open currents directorys stats to get inode and device number*/
-        if (lstat(".", &current_stat) == -1)
+        /* open currents directorys stats to get inode and device number
+         * this will soon become the child*/
+        if (stat(".", &child_stat) == -1)
         {
-            perror("lstat");
-            exit(EXIT_FAILURE);
-        }
-        /* get parent stat aswell to check if we hit the root directory as well
-        as comparing the device numbers*/
-        if (lstat("..", &parent_stat) == -1)
-        {
-            perror("lstat");
+            perror("cannot get current working directory.");
             exit(EXIT_FAILURE);
         }
 
-        /* check if we hit root and break out of the while loop*/
-        if (parent_stat.st_ino == current_stat.st_ino)
+        /* check if we hit root break out of the while loop*/
+        if ((root_stat.st_ino == child_stat.st_ino) &&
+            (root_stat.st_dev == child_stat.st_dev))
         {
             break;
         }
+
+        /* change current directory to parent directory to check for its
+        entries*/
+        if (chdir("..") == -1)
+        {
+            perror("cannot get current working directory.");
+            exit(EXIT_FAILURE);
+        }
+
+        /* open current directory to compare child entries*/
         /* open currents directory parent directory*/
         /* handle errors accordingly*/
-        parent_dirp = opendir("..");
-        if (parent_dirp == NULL)
+        current_dirp = opendir(".");
+        if (current_dirp == NULL)
         {
             perror("mypwd");
             exit(EXIT_FAILURE);
@@ -62,17 +75,24 @@ int main(int argc, char *argv[])
 
         /* loop through the directory entries and find name of current
          * directory by comparing the entries inode with current directories
-         * inode*/
-        while ((parent_entry = readdir(parent_dirp)) != NULL)
+         * inode as well as comparing the ineds*/
+        while ((current_entry = readdir(current_dirp)) != NULL)
         {
-            if (parent_entry->d_ino == current_stat.st_ino &&
-                parent_stat.st_dev == current_stat.st_dev)
+            /* stat the current entry to get i node and device number*/
+            if (stat(current_entry->d_name, &current_stat) == -1)
+            {
+                perror("cannot get current working directory.");
+                exit(EXIT_FAILURE);
+            }
+
+            if (current_stat.st_ino == child_stat.st_ino &&
+                current_stat.st_dev == child_stat.st_dev)
             {
                 /* get new path length to check if path is too long and for use
                  * in the tmp allocation*/
                 /* buffer is at least the size of pathname, the new name and 1
                  * more for the '/' character*/
-                path_length = strlen(parent_entry->d_name) +
+                path_length = strlen(current_entry->d_name) +
                               strlen(path_name) + 1;
 
                 /* check if path would get too long*/
@@ -81,42 +101,41 @@ int main(int argc, char *argv[])
                     fprintf(stderr, "path too long\n");
                     exit(EXIT_FAILURE);
                 }
-                /* get temporary string to store name in*/
-                char *tmp = (char *)malloc(path_length);
-                /* handle memory allocation error*/
-                if (tmp == NULL)
-                {
-                    perror("memory allocation error");
-                    exit(EXIT_FAILURE);
-                }
 
+                /* a bit messy but it gets the job done*/
+                /* get temporary string to store name in*/
+                char tmp[path_length];
                 /* start with the '/'*/
                 strcpy(tmp, "/");
                 /* append the new name*/
-                strcat(tmp, parent_entry->d_name);
+                strcat(tmp, current_entry->d_name);
                 /* append the rest of the path_name*/
                 strcat(tmp, path_name);
                 /* cope tmp to path_name and free the buffer*/
                 strcpy(path_name, tmp);
-                free(tmp);
-                /* break out of while loop*/
+                /* break out of while loop because obviously the right entry
+                was found*/
                 break;
             }
         }
 
         /* close direcotry*/
-        if (closedir(parent_dirp) == -1)
+        if (closedir(current_dirp) == -1)
         {
-            perror("closedir");
+            perror("cannot get current working directory.");
             exit(EXIT_FAILURE);
         }
-
-        /* change working directory*/
-        chdir("..");
     }
 
     /* print out final path_name*/
     printf("%s\n", path_name);
+    /* get cwd back to origin*/
+    if (chdir(path_name) == -1)
+    {
+        perror("cannot get current working directory.");
+        exit(EXIT_FAILURE);
+    }
+
     /* free path_name*/
     free(path_name);
     return 0;

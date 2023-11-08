@@ -10,6 +10,7 @@ int *histogram(int input_fd)
     int *histogram = (int *)calloc(NUM_POSSIB_BYTES, sizeof(int));
     if (!histogram)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
 
@@ -68,7 +69,8 @@ node *insertSorted(node *head, node *new_node)
 
     /* if list is empty or heads frequency is bigger start with new_node as
      * head*/
-    if (!head || head->freq > new_node->freq)
+    if (!head || head->freq > new_node->freq || 
+        (head->freq == new_node->freq && head->byte > new_node->byte))
     {
         new_node->next = head;
         head = new_node;
@@ -154,6 +156,7 @@ node *binaryTree(node *head)
     /* loop through linked list and create binary tree accordingly*/
     while (current->next)
     {
+
         /* as linked list is sorted take first two elements*/
         previous = current;
         current = previous->next;

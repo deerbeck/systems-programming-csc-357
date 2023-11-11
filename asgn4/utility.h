@@ -15,6 +15,10 @@
 #include <dirent.h>
 #include <sys/sysmacros.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <ctype.h>
+#include <utime.h>
+#include <errno.h>
 
 #define READ_WRITE_BUFFER_SIZE 4096
 #define PATH_LENGTH 256
@@ -93,6 +97,7 @@ Header *extract_header(char *header_data);
 
 /* helper function to check if last two blocks are reached*/
 int check_archive_end(int tar_filedes);
+
 /* print out the contents of the tape archive*/
 void list_tar(const char *pathname, int tar_filedes);
 
@@ -101,8 +106,24 @@ void print_permissions(mode_t mode);
 
 /* Helperfunction to print out user name and group of file in listing mode*/
 void print_owner_group(Header *header_struct);
+
 /* Helperfunction to print out the las modification time as specified*/
 void print_time(time_t time);
+
 /* Helperfunction to print out name of file*/
 void build_name(Header *header_struct, char *full_name);
+
+/* Helperfunction to bundle all print statements*/
+void print_header_info(Header *header_struct, char *full_name);
+
+/* Little helper function to remove '/' from directory pathname*/
+void stripLastCharacter(char *str);
+
+/* extract files from archive*/
+void extract_archive(const char *pathname, int tar_filedes);
+
+/* Helper function to set the modification time*/
+void set_mod_time(char *full_name, time_t mod_time);
+
+int make_nested_directory(char *full_name);
 #endif

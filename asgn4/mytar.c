@@ -140,6 +140,28 @@ int main(int argc, char *argv[])
             list_tar("", tar_filedes);
         }
     }
+    else if (extract)
+    {
+        if (argc > 3)
+        {
+            for (i = 3; i < argc; i++)
+            {
+                if (strlen(argv[i]) > PATH_LENGTH)
+                {
+                    perror("path too long");
+                    continue;
+                }
+                else
+                {
+                    extract_archive(argv[i], tar_filedes);
+                }
+            }
+        }
+        else
+        {
+            extract_archive("", tar_filedes);
+        }
+    }
 
     close(tar_filedes);
     return 0;

@@ -3,13 +3,12 @@
 int main(int argc, char *argv[])
 {
     int tar_filedes;
-
     /* index var*/
     int i;
 
     /* command line options are defined in uitility.h to be used in every
-    function*/
-
+     * function*/
+    /* argument for checking*/
     char argument;
     /* check for right usage*/
     if (argc < 3)
@@ -22,7 +21,6 @@ int main(int argc, char *argv[])
     else
     {
         /* check for command line arguments and set values accordingly*/
-
         for (i = 0; (argument = argv[1][i]) != '\0'; i++)
         {
             switch (argument)
@@ -63,6 +61,11 @@ int main(int argc, char *argv[])
         /* open tar file according to command line arguments*/
         if (create)
         {
+            if (argc < 4)
+            {
+                fprintf(stderr, "Please provide path.\n");
+                exit(EXIT_FAILURE);
+            }
             /* open for writing & truncating if in create mode*/
             tar_filedes = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC,
                                S_IRWXU | S_IRWXG);
@@ -120,8 +123,14 @@ int main(int argc, char *argv[])
     }
     else if (listing)
     {
+        int num_paths = 1;
         if (argc > 3)
         {
+            /* create path shopping list :*/
+            /* number of arguments - first three arguments*/
+            num_paths = argc - 3;
+            char *shopping_list[num_paths];
+
             for (i = 3; i < argc; i++)
             {
                 if (strlen(argv[i]) > PATH_LENGTH)
@@ -131,19 +140,31 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    list_tar(argv[i], tar_filedes);
+                    shopping_list[i - 3] = argv[i];
                 }
             }
+            /* now go window shopping*/
+            list_tar(shopping_list, tar_filedes, num_paths);
         }
         else
         {
-            list_tar("", tar_filedes);
+            /* empty string always compares positif in strstr*/
+            char *shopping_list[num_paths];
+            shopping_list[0] = "";
+            /* now go window shopping*/
+            list_tar(shopping_list, tar_filedes, num_paths);
         }
     }
+
     else if (extract)
     {
+        int num_paths = 1;
         if (argc > 3)
         {
+            /* create path shopping list :*/
+            /* number of arguments - first three arguments*/
+            num_paths = argc - 3;
+            char *shopping_list[num_paths];
             for (i = 3; i < argc; i++)
             {
                 if (strlen(argv[i]) > PATH_LENGTH)
@@ -153,13 +174,18 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    extract_archive(argv[i], tar_filedes);
+                    shopping_list[i - 3] = argv[i];
                 }
             }
+            /*now go actually shopping*/
+            extract_archive(shopping_list, tar_filedes, num_paths);
         }
         else
         {
-            extract_archive("", tar_filedes);
+            char *shopping_list[num_paths];
+            shopping_list[0] = "";
+            /*now go actually shopping*/
+            extract_archive(shopping_list, tar_filedes, num_paths);
         }
     }
 

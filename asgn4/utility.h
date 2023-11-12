@@ -24,6 +24,24 @@
 #define PATH_LENGTH 256
 #define BLOCK_SIZE 512
 
+/*define all the sizes of the Header-Block --->>> no mo magic numbers*/
+#define NAME_SIZE 100
+#define MODE_SIZE 8
+#define UID_SIZE 8
+#define GID_SIZE 8
+#define SIZE_SIZE 12
+#define MTIME_SIZE 12
+#define CHKSUM_SIZE 8
+#define TYPEFLAG_SIZE 1
+#define LINKNAME_SIZE 100
+#define MAGIC_SIZE 6
+#define VERSION_SIZE 2
+#define UNAME_SIZE 32
+#define GNAME_SIZE 32
+#define DEVMAJOR_SIZE 8
+#define DEVMINOR_SIZE 8
+#define PREFIX_SIZE 155
+#define PADDING_SIZE 12
 /* command line options to be available in every function*/
 extern int verbose;
 extern int create;
@@ -61,23 +79,23 @@ typedef struct __attribute__((packed)) Header
 {
     /* struct and size according to specification
      * Read USART Header Format for "Magic Numbers"*/
-    char name[100];
-    char mode[8];
-    char uid[8];
-    char gid[8];
-    char size[12];
-    char mtime[12];
-    char chksum[8];
-    char typeflag[1];
-    char linkname[100];
-    char magic[6];
-    char version[2];
-    char uname[32];
-    char gname[32];
-    char devmajor[8];
-    char devminor[8];
-    char prefix[155];
-    char padding[12];
+    char name[NAME_SIZE];
+    char mode[MODE_SIZE];
+    char uid[UID_SIZE];
+    char gid[GID_SIZE];
+    char size[SIZE_SIZE];
+    char mtime[MTIME_SIZE];
+    char chksum[CHKSUM_SIZE];
+    char typeflag[TYPEFLAG_SIZE];
+    char linkname[LINKNAME_SIZE];
+    char magic[MAGIC_SIZE];
+    char version[VERSION_SIZE];
+    char uname[UNAME_SIZE];
+    char gname[GNAME_SIZE];
+    char devmajor[DEVMAJOR_SIZE];
+    char devminor[DEVMINOR_SIZE];
+    char prefix[PREFIX_SIZE];
+    char padding[PADDING_SIZE];
 
 } Header;
 
@@ -99,7 +117,7 @@ Header *extract_header(char *header_data);
 int check_archive_end(int tar_filedes);
 
 /* print out the contents of the tape archive*/
-void list_tar(const char *pathname, int tar_filedes);
+void list_tar(char **shopping_list, int tar_filedes, int num_paths);
 
 /* Helperfunction to print out the permissions in listing mode*/
 void print_permissions(mode_t mode);
@@ -120,7 +138,7 @@ void print_header_info(Header *header_struct, char *full_name);
 void stripLastCharacter(char *str);
 
 /* extract files from archive*/
-void extract_archive(const char *pathname, int tar_filedes);
+void extract_archive(char **shopping_list, int tar_filedes, int num_paths);
 
 /* Helper function to set the modification time*/
 void set_mod_time(char *full_name, time_t mod_time);

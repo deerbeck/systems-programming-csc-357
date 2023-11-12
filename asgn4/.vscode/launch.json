@@ -68,7 +68,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/mytar",
             "args": [
-                "xfv",
+                "xfvS",
                 "mytar.tar",
             ],
             "stopAtEntry": false,

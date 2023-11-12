@@ -49,6 +49,12 @@ int insert_special_int(char *where, size_t size, int32_t val)
 
 void archive_file(const char *pathname, int tar_filedes)
 {
+    /* check if pathname is too long*/
+    if (strlen(pathname) > PATH_LENGTH - 1)
+    {
+        fprintf(stderr, "Pathname too long. Skipping...\n");
+        return;
+    }
     /* create buffer for absolute paths*/
     char path_buffer[PATH_LENGTH];
     strcpy(path_buffer, pathname);
@@ -93,7 +99,8 @@ void archive_file(const char *pathname, int tar_filedes)
         int data_filedes = open(path_buffer, O_RDONLY);
         if (data_filedes == -1)
         {
-            fprintf(stderr, "%s could not be opened. Skipping...", path_buffer);
+            fprintf(stderr, "%s could not be opened. Skipping...",
+                    path_buffer);
             return;
         }
 
@@ -158,6 +165,12 @@ void archive_file(const char *pathname, int tar_filedes)
                 strcpy(path_buffer, pathname);
             }
         }
+        /* close dir after we're done with it*/
+        if (closedir(current_dir) == -1)
+        {
+            perror("closedir");
+            exit(EXIT_FAILURE);
+        }
     }
 }
 
@@ -166,67 +179,67 @@ unsigned int calc_checksum(Header *header_struct)
     /* all the numbers used are taken from the header specification*/
     unsigned int checksum = 0;
     int i = 0;
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < NAME_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->name[i];
     }
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < MODE_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->mode[i];
     }
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < UID_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->uid[i];
     }
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < GID_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->gid[i];
     }
-    for (i = 0; i < 12; i++)
+    for (i = 0; i < SIZE_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->size[i];
     }
-    for (i = 0; i < 12; i++)
+    for (i = 0; i < MTIME_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->mtime[i];
     }
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < CHKSUM_SIZE; i++)
     {
         checksum += (unsigned char)' ';
     }
-    for (i = 0; i < 1; i++)
+    for (i = 0; i < TYPEFLAG_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->typeflag[i];
     }
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < LINKNAME_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->linkname[i];
     }
-    for (i = 0; i < 6; i++)
+    for (i = 0; i < MAGIC_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->magic[i];
     }
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < VERSION_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->version[i];
     }
-    for (i = 0; i < 32; i++)
+    for (i = 0; i < UNAME_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->uname[i];
     }
-    for (i = 0; i < 32; i++)
+    for (i = 0; i < GNAME_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->gname[i];
     }
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < DEVMAJOR_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->devmajor[i];
     }
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < DEVMINOR_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->devminor[i];
     }
-    for (i = 0; i < 155; i++)
+    for (i = 0; i < PREFIX_SIZE; i++)
     {
         checksum += (unsigned char)header_struct->prefix[i];
     }
@@ -237,31 +250,40 @@ int validate_header(Header *header_struct)
 {
     unsigned int chcksum_calc = calc_checksum(header_struct);
     unsigned int chcksum_stored = strtol(header_struct->chksum, NULL, 8);
-    char magic_buf[6];
-    int i;
-    for (i = 0; i < 6; i++)
-    {
-        magic_buf[i] = tolower(header_struct->magic[i]);
-    }
 
+    /* used for unstrict checking*/
+    char magic_buf_unstrict[MAGIC_SIZE];
+    memcpy(magic_buf_unstrict, header_struct->magic, MAGIC_SIZE);
+    /* set last char to nul termination to fit unstrict mode*/
+    magic_buf_unstrict[MAGIC_SIZE - 1] = '\0';
+
+    /* always check chksum and 5 characters of ustar*/
     if (chcksum_calc != chcksum_stored)
     {
         fprintf(stderr, "Checksum not valid.\n");
         return 0;
     }
-    /*  else if (strcmp(magic_buf, "ustar"))
-     {
-         fprintf(stderr, "Magic number not valid.\n");
-         return 0;
-     }
-     else if (header_struct->version[0] != '0' ||
-              header_struct->version[1] != '0')
-     {
-         fprintf(stderr, "Version not valid.\n");
-         return 0;
-     } */
-    else
-        return 1;
+    else if (strcmp(magic_buf_unstrict, "ustar"))
+    {
+        return 0;
+    }
+
+    /* in strict mode check for nulltermination and version number*/
+    if (strict)
+    {
+        if (strcmp(header_struct->magic, "ustar"))
+        {
+            fprintf(stderr, "Magic number not valid.\n");
+            return 0;
+        }
+        else if (header_struct->version[0] != '0' ||
+                 header_struct->version[1] != '0')
+        {
+            fprintf(stderr, "Version not valid.\n");
+            return 0;
+        }
+    }
+    return 1;
 }
 
 Header *create_header(const char *pathname, struct stat stat_struct)
@@ -284,14 +306,13 @@ Header *create_header(const char *pathname, struct stat stat_struct)
 
     /* first of all, handle path name -> checking length and split to fit into
     name and prefix*/
-
-    if (strlen(path_buffer) > 100)
+    if (strlen(path_buffer) > NAME_SIZE)
     {
         char *split_pos = path_buffer;
         char *end_path = strchr(path_buffer, '\0');
 
         split_pos = strchr(split_pos, '/');
-        while (end_path - split_pos > 100)
+        while (end_path - split_pos > NAME_SIZE)
         {
             split_pos = strchr(split_pos + 1, '/');
 
@@ -305,22 +326,23 @@ Header *create_header(const char *pathname, struct stat stat_struct)
 
         /* now copy end of filename to name in header (split_pos+1 to exclude
         '/')*/
-        strncpy(header_struct->name, split_pos + 1, 100);
+        strncpy(header_struct->name, split_pos + 1, NAME_SIZE);
 
         /* put rest of name in prefix*/
         strncpy(header_struct->prefix, path_buffer, split_pos - path_buffer);
     }
     else
     {
-        strncpy(header_struct->name, path_buffer, 100);
+        strncpy(header_struct->name, path_buffer, NAME_SIZE);
     }
     /* add '/' if directory*/
-    if (S_ISDIR(stat_struct.st_mode) && strlen(header_struct->name) < 100)
+    if (S_ISDIR(stat_struct.st_mode) && strlen(header_struct->name) < NAME_SIZE)
     {
         strcat(header_struct->name, "/");
     }
 
     /* saving the mode print into mode array and strip of filetype*/
+    /* 07777 is mask to only safe last 4 octal digits of mode_t*/
     sprintf(header_struct->mode, "%07o", (stat_struct.st_mode & 07777));
 
     /* next up is the uid and gid of the file*/
@@ -356,14 +378,15 @@ Header *create_header(const char *pathname, struct stat stat_struct)
     /* store linkname*/
     if (S_ISLNK(stat_struct.st_mode))
     {
-        if (readlink(path_buffer, header_struct->linkname, 100) == -1)
+        if (readlink(path_buffer, header_struct->linkname,
+                     LINKNAME_SIZE) == -1)
         {
             fprintf(stderr, "Can not read link. Skipping...");
         }
     }
 
     /* store magic "ustar"*/
-    strncpy(header_struct->magic, "ustar", 6);
+    strncpy(header_struct->magic, "ustar", MAGIC_SIZE);
 
     /* store '00' version*/
     header_struct->version[0] = '0';
@@ -377,7 +400,7 @@ Header *create_header(const char *pathname, struct stat stat_struct)
     }
     else
     {
-        strncpy(header_struct->uname, pwd->pw_name, 32);
+        strncpy(header_struct->uname, pwd->pw_name, UNAME_SIZE);
     }
 
     /* get group name and store in header*/
@@ -388,7 +411,7 @@ Header *create_header(const char *pathname, struct stat stat_struct)
     }
     else
     {
-        strncpy(header_struct->gname, grp->gr_name, 32);
+        strncpy(header_struct->gname, grp->gr_name, GNAME_SIZE);
     }
 
     /* get major devnumber*/
@@ -408,18 +431,22 @@ Header *create_header(const char *pathname, struct stat stat_struct)
 
 Header *extract_header(char *header_data)
 {
+    /* extract header out of read data*/
     Header *header_struct = (Header *)calloc(sizeof(Header), sizeof(char));
     if (!header_struct)
     {
         perror("calloc");
         exit(EXIT_FAILURE);
     }
+    /* because of our packed attribute we can just memcopy the header data*/
     memcpy(header_struct, header_data, BLOCK_SIZE);
     return header_struct;
 }
 
 int check_archive_end(int tar_filedes)
 {
+    /* check if end of archive is reached by checking if 2 blocks of BLOCK_SIZE
+     * are '\0'*/
     off_t current_offset = lseek(tar_filedes, 0, SEEK_CUR);
     char buffer[2 * BLOCK_SIZE];
     if (read(tar_filedes, buffer, 2 * BLOCK_SIZE) == -1)
@@ -441,30 +468,32 @@ int check_archive_end(int tar_filedes)
     return 1;
 }
 
-void list_tar(const char *pathname, int tar_filedes)
+void list_tar(char **shopping_list, int tar_filedes, int num_paths)
 {
-
+    /* initialize variables*/
     Header *header_struct;
     ssize_t bytes_read;
     char header_data[BLOCK_SIZE];
     int num_data_blocks;
 
-    char path_buffer[PATH_LENGTH];
-    strcpy(path_buffer, pathname);
-
     char full_name[PATH_LENGTH];
+
+    /* loop index*/
+    int i;
 
     while ((bytes_read = read(tar_filedes, header_data, BLOCK_SIZE)) != 0)
     {
-        /* reset name*/
-        memset(full_name, '\0', PATH_LENGTH);
-
+        /* if reading goes wrong...*/
         if (bytes_read == -1)
         {
             perror("Reading file");
             exit(EXIT_FAILURE);
         }
-        /* get header struct out of read data*/
+
+        /* reset name*/
+        memset(full_name, '\0', PATH_LENGTH);
+
+        /* get header struct out of read data and check*/
         header_struct = extract_header(header_data);
         if (!header_struct)
         {
@@ -474,6 +503,8 @@ void list_tar(const char *pathname, int tar_filedes)
         if (!validate_header(header_struct))
         {
             fprintf(stderr, "Header not valid. I give up...\n");
+            /* free header_struct*/
+            free(header_struct);
             exit(EXIT_FAILURE);
         }
 
@@ -490,18 +521,24 @@ void list_tar(const char *pathname, int tar_filedes)
         /* get full name to check for pathname and for later printing*/
         build_name(header_struct, full_name);
 
-        if (strstr(full_name, path_buffer))
+        /* look if element is in shoppinglist and print if so*/
+        for (i = 0; i < num_paths; i++)
         {
-            if (verbose)
+
+            if (strstr(full_name, shopping_list[i]))
             {
-                print_header_info(header_struct, full_name);
-            }
-            /* just print name in non-verbose*/
-            else
-            {
-                printf("%s\n", full_name);
+                if (verbose)
+                {
+                    print_header_info(header_struct, full_name);
+                }
+                /* just print name in non-verbose*/
+                else
+                {
+                    printf("%s\n", full_name);
+                }
             }
         }
+
         /* free header_struct*/
         free(header_struct);
         /* check if end of archive is reached and end*/
@@ -510,9 +547,6 @@ void list_tar(const char *pathname, int tar_filedes)
             break;
         }
     }
-
-    /* seek back to start to seek more paths*/
-    lseek(tar_filedes, 0, SEEK_SET);
 }
 
 void print_permissions(mode_t mode)
@@ -533,23 +567,18 @@ void print_owner_group(Header *header_struct)
 {
     /* buffer strings to store user and owner in*/
     /* 8/17 is length from specification but we need 1 more for each to account
-    for \0 character*/
+     * for \0 character*/
     char owner[9];
     char group[9];
     char result[18];
     int i;
-    /* I like clean data*/
-    /* can do with memset aswell*/
-    for (i = 0; i < 9; i++)
-    {
-        owner[i] = '\0';
-        group[i] = '\0';
-    }
-    for (i = 0; i < 18; i++)
-    {
-        result[i] = '\0';
-    }
 
+    /* pls don't judge, I like clean data*/
+    memset(owner, '\0', 9);
+    memset(group, '\0', 9);
+    memset(result, '\0', 18);
+
+    /* check if username is stored and if not put out uid*/
     if (strlen(header_struct->uname) > 0)
     {
         strncpy(owner, header_struct->uname, 8);
@@ -558,7 +587,7 @@ void print_owner_group(Header *header_struct)
     {
         sprintf(owner, "%7d", (int)strtol(header_struct->uid, NULL, 8));
     }
-    /* now get group name*/
+    /* check if group name is stored and if not put out gid*/
     if (strlen(header_struct->gname) > 0)
     {
         strncpy(group, header_struct->gname, 8);
@@ -567,6 +596,7 @@ void print_owner_group(Header *header_struct)
     {
         sprintf(group, "%7d", (int)strtol(header_struct->gid, NULL, 8));
     }
+
     /* copy to result and print out in the end*/
     strcpy(result, owner);
     strcat(result, "/");
@@ -576,45 +606,47 @@ void print_owner_group(Header *header_struct)
 
 void print_time(time_t time)
 {
-    // Convert the time to a struct tm in local time
+    /* Convert the time to a struct tm in local time*/
     struct tm *localTime = localtime(&time);
 
-    // Check if localtime failed
+    /* Check if localtime failed*/
     if (localTime == NULL)
     {
         perror("Error getting local time");
     }
 
-    // Format the time as a string
-    char formattedTime[20]; // YYYY-MM-DD HH:MM\0
-    strftime(formattedTime, sizeof(formattedTime), "%Y-%m-%d %H:%M", localTime);
+    /* Format the time as a string */
+    char formattedTime[20]; /* YYYY-MM-DD HH:MM\0*/
+    strftime(formattedTime, sizeof(formattedTime), "%Y-%m-%d %H:%M",
+             localTime);
 
-    // Print the formatted time
+    /* Print the formatted time*/
     printf("%s", formattedTime);
 }
 
 void build_name(Header *header_struct, char *full_name)
 {
     /* numbers taken from specification +1 for \0 termination*/
-    char prefix[156];
-    char name[101];
+    char prefix[PREFIX_SIZE + 1];
+    char name[NAME_SIZE + 1];
 
-    memcpy(name, header_struct->name, 101);
-    /* NUL Terminate for printf to work*/
-    name[100] = '\0';
+    /* copy name*/
+    memcpy(name, header_struct->name, NAME_SIZE + 1);
+    /* don't forget to NULL terminate*/
+    name[NAME_SIZE] = '\0';
     /* print out name of file*/
     /* include prefix if applicable*/
     if (header_struct->prefix[0] != '\0')
     {
-        memcpy(prefix, header_struct->prefix, 156);
+        memcpy(prefix, header_struct->prefix, PREFIX_SIZE + 1);
         /* NUL Terminate for printf to work*/
-        prefix[155] = '\0';
+        prefix[PREFIX_SIZE] = '\0';
         sprintf(full_name, "%s/%s", prefix, name);
     }
     else
     {
         /* handle if directory barely fits in name buffer*/
-        if (header_struct->typeflag[0] == '5' && strlen(name) == 100)
+        if (header_struct->typeflag[0] == '5' && strlen(name) == NAME_SIZE)
         {
             sprintf(full_name, "%s/", name);
         }
@@ -670,6 +702,7 @@ void print_header_info(Header *header_struct, char *full_name)
 
 void stripLastCharacter(char *str)
 {
+    /* strip last character of string*/
     size_t len = strlen(str);
     if (len > 0)
     {
@@ -677,8 +710,9 @@ void stripLastCharacter(char *str)
     }
 }
 
-void extract_archive(const char *pathname, int tar_filedes)
+void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
 {
+    /* initialize variables*/
     Header *header_struct;
     ssize_t bytes_read;
     ssize_t bytes_written;
@@ -688,15 +722,15 @@ void extract_archive(const char *pathname, int tar_filedes)
     int num_data_blocks;
     int last_block_data_size;
 
-    char path_buffer[PATH_LENGTH];
-    strcpy(path_buffer, pathname);
-
     char full_name[PATH_LENGTH];
 
-    int i;
+    int path_found_flag;
+    int i, j;
 
     while ((bytes_read = read(tar_filedes, header_data, BLOCK_SIZE)) != 0)
     {
+        /* reset flag*/
+        path_found_flag = 0;
         /* reset name*/
         memset(full_name, '\0', PATH_LENGTH);
 
@@ -720,24 +754,30 @@ void extract_archive(const char *pathname, int tar_filedes)
 
         /* get full name to check for pathname and for later printing*/
         build_name(header_struct, full_name);
-
+        for (j = 0; j < num_paths; j++)
+        {
+            if (strstr(full_name, shopping_list[j]))
+            {
+                path_found_flag = 1;
+            }
+        }
         /* extract if pathname given*/
-        if (strstr(full_name, path_buffer))
+        if (path_found_flag)
         {
             if (verbose)
             {
                 printf("%s\n", full_name);
             }
 
-            /* first check if directory and creat it*/
+            /* first check if directory and create it*/
             if (header_struct->typeflag[0] == '5')
             {
                 stripLastCharacter(full_name);
                 if (make_nested_directory(full_name) == -1)
                 {
                     fprintf(stderr, "Couldn't create directory\n");
-                    /* don't need to skip data because directory data size =
-                     * 0*/
+                    /* don't need to skip data because directory data size
+                     * = 0*/
                     continue;
                 }
             }
@@ -748,7 +788,8 @@ void extract_archive(const char *pathname, int tar_filedes)
                 /* create all directories needed for file*/
                 char parent_path[PATH_LENGTH];
                 memset(parent_path, '\0', PATH_LENGTH);
-                /* check if file is in subdirs and create them accordingly*/
+                /* check if file even is in subdirs and create them
+                accordingly*/
                 char *file_start = strrchr(full_name, '/');
                 if (
                     file_start)
@@ -762,8 +803,8 @@ void extract_archive(const char *pathname, int tar_filedes)
                     }
                 }
 
-                /* get correct permissions for file rw for everyone and execute
-                 * if anyone has execute*/
+                /* get correct permissions for file rw for everyone and
+                 * execute for everyone if anyone has execute*/
                 mode_t file_mode = 0;
                 if ((mode_t)strtol(header_struct->mode, NULL, 8) &
                     (S_IXUSR | S_IXGRP | S_IXOTH))
@@ -775,6 +816,7 @@ void extract_archive(const char *pathname, int tar_filedes)
                     file_mode = (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
                                  S_IROTH | S_IWOTH);
                 }
+
                 /* create file to store data in*/
                 int file_fildes;
                 file_fildes = open(full_name, O_WRONLY | O_CREAT | O_TRUNC,
@@ -786,16 +828,19 @@ void extract_archive(const char *pathname, int tar_filedes)
                 }
 
                 /* extract number of data blocks to know how much to read
-                 * (header_struct->size +BLOCK_SIZE -1) / BLOCK_SIZE round up
-                 * to next integer*/
+                 * (header_struct->size +BLOCK_SIZE -1) / BLOCK_SIZE round
+                 * up to next integer*/
                 /* 8 is base used for octal conversion*/
 
                 num_data_blocks =
-                    (strtol(header_struct->size, NULL, 8) + BLOCK_SIZE - 1) /
+                    (strtol(header_struct->size, NULL, 8) +
+                     BLOCK_SIZE - 1) /
                     BLOCK_SIZE;
+
                 /* get how much to write if the last block is not completly
                  * filled*/
-                last_block_data_size = strtol(header_struct->size, NULL, 8) %
+                last_block_data_size = strtol(header_struct->size,
+                                              NULL, 8) %
                                        BLOCK_SIZE;
                 for (i = 0; i < num_data_blocks; i++)
                 {
@@ -834,18 +879,20 @@ void extract_archive(const char *pathname, int tar_filedes)
                 close(file_fildes);
                 /* finaly set the modifaction time of the created file*/
                 set_mod_time(full_name,
-                             (time_t)strtol(header_struct->mtime, NULL, 8));
+                             (time_t)strtol(header_struct->mtime,
+                                            NULL, 8));
             }
             /* now handle symlinks*/
             else if (header_struct->typeflag[0] == '2')
             {
                 if (symlink(header_struct->linkname, full_name) == -1)
                 {
-                    fprintf(stderr, "Can not create Symlink.\n");
+                    perror("symlink");
                     continue;
                 }
             }
         }
+
         /* skip data otherwise*/
         else
         {
@@ -871,9 +918,6 @@ void extract_archive(const char *pathname, int tar_filedes)
             break;
         }
     }
-
-    /* seek back to start to seek more paths*/
-    lseek(tar_filedes, 0, SEEK_SET);
 }
 
 void set_mod_time(char *full_name, time_t mod_time)
@@ -920,7 +964,7 @@ int make_nested_directory(char *full_name)
                 /* Null-terminate the parent directory path*/
                 *lastSlash = '\0';
 
-                // Recursively create parent directories
+                /* Recursively create parent directories*/
                 if (make_nested_directory(parent) == 0)
                 {
                     /* Parent directories created successfully, try creating

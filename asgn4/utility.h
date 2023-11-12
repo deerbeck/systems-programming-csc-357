@@ -71,8 +71,6 @@ uint32_t extract_special_int(char *where, int len);
  */
 int insert_special_int(char *where, size_t size, int32_t val);
 
-/* function to traverse directory and subdirectories and create archive*/
-void archive_file(const char *pathname, int tar_filedes);
 
 /* Header struct to store all necessary data in*/
 typedef struct __attribute__((packed)) Header
@@ -105,10 +103,6 @@ unsigned int calc_checksum(Header *header_struct);
 /* helperfunction to validate the ckecksum stored in the Header*/
 int validate_header(Header *header_struct);
 
-/* take the path_name and the struct to create the header struct with all
- * needed information*/
-Header *create_header(const char *pathname, struct stat stat_struct);
-
 /* helper function to extract the data stored in the header block and store in
  * header struct*/
 Header *extract_header(char *header_data);
@@ -116,32 +110,7 @@ Header *extract_header(char *header_data);
 /* helper function to check if last two blocks are reached*/
 int check_archive_end(int tar_filedes);
 
-/* print out the contents of the tape archive*/
-void list_tar(char **shopping_list, int tar_filedes, int num_paths);
-
-/* Helperfunction to print out the permissions in listing mode*/
-void print_permissions(mode_t mode);
-
-/* Helperfunction to print out user name and group of file in listing mode*/
-void print_owner_group(Header *header_struct);
-
-/* Helperfunction to print out the las modification time as specified*/
-void print_time(time_t time);
 
 /* Helperfunction to print out name of file*/
 void build_name(Header *header_struct, char *full_name);
-
-/* Helperfunction to bundle all print statements*/
-void print_header_info(Header *header_struct, char *full_name);
-
-/* Little helper function to remove '/' from directory pathname*/
-void stripLastCharacter(char *str);
-
-/* extract files from archive*/
-void extract_archive(char **shopping_list, int tar_filedes, int num_paths);
-
-/* Helper function to set the modification time*/
-void set_mod_time(char *full_name, time_t mod_time);
-
-int make_nested_directory(char *full_name);
 #endif

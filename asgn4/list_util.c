@@ -7,7 +7,6 @@ void list_tar(char **shopping_list, int tar_filedes, int num_paths)
     ssize_t bytes_read;
     char header_data[BLOCK_SIZE];
     int num_data_blocks;
-
     char full_name[PATH_LENGTH];
 
     /* loop index*/
@@ -45,11 +44,15 @@ void list_tar(char **shopping_list, int tar_filedes, int num_paths)
          * integer*/
         /* 8 is base used for octal conversion*/
         num_data_blocks =
-            (strtol(header_struct->size, NULL, 8) + BLOCK_SIZE - 1) /
+            (strtol(header_struct->size, NULL, OCTALFLAG) + BLOCK_SIZE - 1) /
             BLOCK_SIZE;
 
         /* seek file to next header location*/
-        lseek(tar_filedes, num_data_blocks * BLOCK_SIZE, SEEK_CUR);
+        if (lseek(tar_filedes, num_data_blocks * BLOCK_SIZE, SEEK_CUR) == -1)
+        {
+            perror("lseek");
+            exit(EXIT_FAILURE);
+        }
         /* get full name to check for pathname and for later printing*/
         build_name(header_struct, full_name);
 
@@ -100,11 +103,11 @@ void print_header_info(Header *header_struct, char *full_name)
         break;
 
     default:
-        fprintf(stderr, "Filetype nto supported");
+        fprintf(stderr, "Filetype not supported");
         break;
     }
     /* pass mode to helper function 8 is base for octal*/
-    print_permissions((mode_t)strtol(header_struct->mode, NULL, 8));
+    print_permissions((mode_t)strtol(header_struct->mode, NULL, OCTALFLAG));
     /* put whitespace*/
     putchar(' ');
     /* print out owner / if not available the uid*/
@@ -112,11 +115,11 @@ void print_header_info(Header *header_struct, char *full_name)
     /* put whitespace*/
     putchar(' ');
     /*print out size of file*/
-    printf("%7d", (int)strtol(header_struct->size, NULL, 8));
+    printf("%7d", (int)strtol(header_struct->size, NULL, OCTALFLAG));
     /* put whitespace*/
     putchar(' ');
     /* print out modification time*/
-    print_time((time_t)strtol(header_struct->mtime, NULL, 8));
+    print_time((time_t)strtol(header_struct->mtime, NULL, OCTALFLAG));
     /* put whitespace*/
     putchar(' ');
 
@@ -159,7 +162,8 @@ void print_owner_group(Header *header_struct)
     }
     else
     {
-        sprintf(owner, "%7d", (int)strtol(header_struct->uid, NULL, 8));
+        sprintf(owner, "%7d",
+                (int)strtol(header_struct->uid, NULL, OCTALFLAG));
     }
     /* check if group name is stored and if not put out gid*/
     if (strlen(header_struct->gname) > 0)
@@ -168,7 +172,8 @@ void print_owner_group(Header *header_struct)
     }
     else
     {
-        sprintf(group, "%7d", (int)strtol(header_struct->gid, NULL, 8));
+        sprintf(group, "%7d",
+                (int)strtol(header_struct->gid, NULL, OCTALFLAG));
     }
 
     /* copy to result and print out in the end*/

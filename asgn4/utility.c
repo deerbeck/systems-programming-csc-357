@@ -122,7 +122,8 @@ unsigned int calc_checksum(Header *header_struct)
 int validate_header(Header *header_struct)
 {
     unsigned int chcksum_calc = calc_checksum(header_struct);
-    unsigned int chcksum_stored = strtol(header_struct->chksum, NULL, 8);
+    unsigned int chcksum_stored = strtol(header_struct->chksum,
+                                         NULL, OCTALFLAG);
 
     /* used for unstrict checking*/
     char magic_buf_unstrict[MAGIC_SIZE];
@@ -138,6 +139,7 @@ int validate_header(Header *header_struct)
     }
     else if (strcmp(magic_buf_unstrict, "ustar"))
     {
+        fprintf(stderr, "Magic not valid.\n");
         return 0;
     }
 
@@ -146,7 +148,7 @@ int validate_header(Header *header_struct)
     {
         if (strcmp(header_struct->magic, "ustar"))
         {
-            fprintf(stderr, "Magic number not valid.\n");
+            fprintf(stderr, "Magic not valid.\n");
             return 0;
         }
         else if (header_struct->version[0] != '0' ||
@@ -178,6 +180,11 @@ int check_archive_end(int tar_filedes)
     /* check if end of archive is reached by checking if 2 blocks of BLOCK_SIZE
      * are '\0'*/
     off_t current_offset = lseek(tar_filedes, 0, SEEK_CUR);
+    if (current_offset == -1)
+    {
+        perror("lseek");
+        exit(EXIT_FAILURE);
+    }
     char buffer[2 * BLOCK_SIZE];
     if (read(tar_filedes, buffer, 2 * BLOCK_SIZE) == -1)
     {
@@ -191,7 +198,11 @@ int check_archive_end(int tar_filedes)
         if (buffer[i] != '\0')
         {
             /* reset offset*/
-            lseek(tar_filedes, current_offset, SEEK_SET);
+            if (lseek(tar_filedes, current_offset, SEEK_SET) == -1)
+            {
+                perror("lseek");
+                exit(EXIT_FAILURE);
+            }
             return 0;
         }
     }
@@ -205,14 +216,15 @@ void build_name(Header *header_struct, char *full_name)
     char name[NAME_SIZE + 1];
 
     /* copy name*/
-    memcpy(name, header_struct->name, NAME_SIZE + 1);
+    memcpy(name, header_struct->name, NAME_SIZE);
     /* don't forget to NULL terminate*/
     name[NAME_SIZE] = '\0';
     /* print out name of file*/
     /* include prefix if applicable*/
     if (header_struct->prefix[0] != '\0')
     {
-        memcpy(prefix, header_struct->prefix, PREFIX_SIZE + 1);
+        /* copy prefix*/
+        memcpy(prefix, header_struct->prefix, PREFIX_SIZE);
         /* NUL Terminate for printf to work*/
         prefix[PREFIX_SIZE] = '\0';
         sprintf(full_name, "%s/%s", prefix, name);

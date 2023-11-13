@@ -110,13 +110,11 @@ int main(int argc, char *argv[])
                 archive_file(argv[i], tar_filedes);
             }
         }
-        /* write two blocks of 0 to mark end of archive*/
+        /* write two blocks of \0 to mark end of archive*/
         char buffer[2 * BLOCK_SIZE];
         /* set buffer to 0*/
-        for (i = 0; i < 2 * BLOCK_SIZE; i++)
-        {
-            buffer[i] = '\0';
-        }
+        memset(buffer, '\0', 2 * BLOCK_SIZE);
+        /* write data to file*/
         if (write(tar_filedes, buffer, 2 * BLOCK_SIZE) == -1)
         {
             perror("writing");
@@ -150,7 +148,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            /* empty string always compares positif in strstr*/
+            /* empty string always compares positive in strstr*/
             char *shopping_list[num_paths];
             shopping_list[0] = "";
             /* now go window shopping*/
@@ -184,8 +182,10 @@ int main(int argc, char *argv[])
         }
         else
         {
+            /* empty string always compares positive in strstr*/
             char *shopping_list[num_paths];
             shopping_list[0] = "";
+
             /*now go actually shopping*/
             extract_archive(shopping_list, tar_filedes, num_paths);
         }

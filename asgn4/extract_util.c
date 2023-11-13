@@ -19,16 +19,17 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
 
     while ((bytes_read = read(tar_filedes, header_data, BLOCK_SIZE)) != 0)
     {
+        if (bytes_read == -1)
+        {
+            perror("read");
+            exit(EXIT_FAILURE);
+        }
+
         /* reset flag*/
         path_found_flag = 0;
         /* reset name*/
         memset(full_name, '\0', PATH_LENGTH);
 
-        if (bytes_read == -1)
-        {
-            perror("Reading file");
-            exit(EXIT_FAILURE);
-        }
         /* get header struct out of read data*/
         header_struct = extract_header(header_data);
         if (!header_struct)
@@ -44,6 +45,8 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
 
         /* get full name to check for pathname and for later printing*/
         build_name(header_struct, full_name);
+
+        /* check if path_name is in shopping list*/
         for (j = 0; j < num_paths; j++)
         {
             if (strstr(full_name, shopping_list[j]))
@@ -120,17 +123,16 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
                 /* extract number of data blocks to know how much to read
                  * (header_struct->size +BLOCK_SIZE -1) / BLOCK_SIZE round
                  * up to next integer*/
-                /* 8 is base used for octal conversion*/
 
                 num_data_blocks =
-                    (strtol(header_struct->size, NULL, 8) +
+                    (strtol(header_struct->size, NULL, OCTALFLAG) +
                      BLOCK_SIZE - 1) /
                     BLOCK_SIZE;
 
                 /* get how much to write if the last block is not completly
                  * filled*/
                 last_block_data_size = strtol(header_struct->size,
-                                              NULL, 8) %
+                                              NULL, OCTALFLAG) %
                                        BLOCK_SIZE;
                 for (i = 0; i < num_data_blocks; i++)
                 {
@@ -170,7 +172,7 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
                 /* finaly set the modifaction time of the created file*/
                 set_mod_time(full_name,
                              (time_t)strtol(header_struct->mtime,
-                                            NULL, 8));
+                                            NULL, OCTALFLAG));
             }
             /* now handle symlinks*/
             else if (header_struct->typeflag[0] == '2')
@@ -183,21 +185,25 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
             }
         }
 
-        /* skip data otherwise*/
+        /* skip data otherwise (Path not in shopping list)*/
         else
         {
             /* extract number of data blocks to skip to read next header
              * (header_struct->size +BLOCK_SIZE -1) / BLOCK_SIZE round up to
              * next integer*/
-            /* 8 is base used for octal conversion*/
 
             num_data_blocks =
-                (strtol(header_struct->size, NULL, 8) + BLOCK_SIZE - 1) /
+                (strtol(header_struct->size, NULL, OCTALFLAG) +
+                 BLOCK_SIZE - 1) /
                 BLOCK_SIZE;
 
             /* seek file to next header location*/
-
-            lseek(tar_filedes, num_data_blocks * BLOCK_SIZE, SEEK_CUR);
+            if (lseek(tar_filedes, num_data_blocks * BLOCK_SIZE,
+                      SEEK_CUR) == -1)
+            {
+                perror("lseek");
+                exit(EXIT_FAILURE);
+            }
         }
 
         /* free header_struct*/
@@ -240,6 +246,7 @@ void set_mod_time(char *full_name, time_t mod_time)
 
 int make_nested_directory(char *full_name)
 {
+    /* directory created successfully*/
     if (mkdir(full_name, (S_IRWXU | S_IRWXG | S_IRWXO)) == 0)
     {
         return 0;

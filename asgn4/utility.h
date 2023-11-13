@@ -23,6 +23,8 @@
 #define READ_WRITE_BUFFER_SIZE 4096
 #define PATH_LENGTH 256
 #define BLOCK_SIZE 512
+#define OCTALFLAG 8
+#define MODEMASK 07777
 
 /*define all the sizes of the Header-Block --->>> no mo magic numbers*/
 #define NAME_SIZE 100
@@ -42,6 +44,7 @@
 #define DEVMINOR_SIZE 8
 #define PREFIX_SIZE 155
 #define PADDING_SIZE 12
+
 /* command line options to be available in every function*/
 extern int verbose;
 extern int create;

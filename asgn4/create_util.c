@@ -3,7 +3,7 @@
 void archive_file(const char *pathname, int tar_filedes)
 {
     /* check if pathname is too long*/
-    if (strlen(pathname) > PATH_LENGTH - 1)
+    if (strlen(pathname) >= PATH_LENGTH)
     {
         fprintf(stderr, "Pathname too long. Skipping...\n");
         return;
@@ -20,7 +20,7 @@ void archive_file(const char *pathname, int tar_filedes)
     /* if stat's couldn't be used on file, return and handle next path*/
     if (lstat(path_buffer, &stat_buf) == -1)
     {
-        fprintf(stderr, "Couldn't stat %s.\n", path_buffer);
+        fprintf(stderr, "Couldn't stat %s. Skipping...\n", path_buffer);
         return;
     }
 
@@ -59,12 +59,8 @@ void archive_file(const char *pathname, int tar_filedes)
 
         ssize_t bytes_read;
         char write_buffer[BLOCK_SIZE];
-        /*set buffer to 0 this takes care of the 0 padding*/
-        int i;
-        for (i = 0; i < BLOCK_SIZE; i++)
-        {
-            write_buffer[i] = '\0';
-        }
+        /*set buffer to \0 this takes care of the \0 padding*/
+        memset(write_buffer, '\0', BLOCK_SIZE);
         while ((bytes_read =
                     read(data_filedes, write_buffer, BLOCK_SIZE)) != 0)
         {
@@ -78,11 +74,9 @@ void archive_file(const char *pathname, int tar_filedes)
                 fprintf(stderr, "Write error. Skipping...");
                 return;
             }
+
             /*reset buffer this takes care of the 0 padding*/
-            for (i = 0; i < BLOCK_SIZE; i++)
-            {
-                write_buffer[i] = '\0';
-            }
+            memset(write_buffer, '\0', BLOCK_SIZE);
         }
     }
     /* check if direcotry and traverse down accordingly*/
@@ -92,7 +86,7 @@ void archive_file(const char *pathname, int tar_filedes)
         current_dir = opendir(path_buffer);
         if (!current_dir)
         {
-            perror("directory currupted");
+            perror("opendir");
             exit(EXIT_FAILURE);
         }
 
@@ -100,9 +94,8 @@ void archive_file(const char *pathname, int tar_filedes)
         while ((current_entry = readdir(current_dir)) != NULL)
         {
             /* check for "." and ".." entry and skip*/
-            if (!strcmp(current_entry->d_name, "."))
-                continue;
-            else if (!strcmp(current_entry->d_name, ".."))
+            if (!strcmp(current_entry->d_name, ".") ||
+                !strcmp(current_entry->d_name, ".."))
                 continue;
             /* if other continue traversing*/
             else
@@ -185,7 +178,7 @@ Header *create_header(const char *pathname, struct stat stat_struct)
 
     /* saving the mode print into mode array and strip of filetype*/
     /* 07777 is mask to only safe last 4 octal digits of mode_t*/
-    sprintf(header_struct->mode, "%07o", (stat_struct.st_mode & 07777));
+    sprintf(header_struct->mode, "%07o", (stat_struct.st_mode & MODEMASK));
 
     /* next up is the uid and gid of the file*/
     sprintf(header_struct->uid, "%07o", (unsigned int)stat_struct.st_uid);

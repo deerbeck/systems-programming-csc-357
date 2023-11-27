@@ -26,14 +26,14 @@ int *histogram(int fd);
  * linked list as well as its childs.
  * Attributes:
  * freq = number of occurences
- * byte = value of the byte
+ * byte = value of the byte int not unsigned char to give merged nodes a value
  * *left_child = pointer to left (lesser frequency) child
  * *right_child = pointer to right (higher frequency) child
  * *next = pointer to next element in linked list*/
 struct node_st
 {
     int freq;
-    unsigned char byte;
+    int byte;
     struct node_st *left_ch;
     struct node_st *right_ch;
     struct node_st *next;
@@ -43,7 +43,7 @@ typedef struct node_st node;
 /* Helper function to create a node and return the pointer to that new node
  * Arguments: byte-value and frequencie
  * Return: pointer to new node*/
-node *createNode(char byte, int freq);
+node *createNode(int byte, int freq);
 
 /* Helper function to insert a node into the linked list while maintaining
  * sorted order

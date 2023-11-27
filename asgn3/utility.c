@@ -10,6 +10,7 @@ int *histogram(int input_fd)
     int *histogram = (int *)calloc(NUM_POSSIB_BYTES, sizeof(int));
     if (!histogram)
     {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
 
@@ -42,7 +43,7 @@ int *histogram(int input_fd)
     return histogram;
 }
 
-node *createNode(char byte, int freq)
+node *createNode(int byte, int freq)
 {
     /* allocate memory for new node*/
     node *new_node = (node *)malloc(sizeof(node));
@@ -69,7 +70,9 @@ node *insertSorted(node *head, node *new_node)
 
     /* if list is empty or heads frequency is bigger start with new_node as
      * head*/
-    if (!head || head->freq > new_node->freq)
+    /* TIEBRAKER CONVENTION needs to be applied to the head aswell......*/
+    if (!head || head->freq > new_node->freq ||
+        (head->freq == new_node->freq && head->byte >= new_node->byte))
     {
         new_node->next = head;
         head = new_node;
@@ -111,7 +114,7 @@ node *linkedList(int *histogram)
     {
         if (histogram[i] > 0)
         {
-            node *new_node = createNode((char)i, histogram[i]);
+            node *new_node = createNode(i, histogram[i]);
             /* Insert the node into the sorted linked list*/
             head = insertSorted(head, new_node);
         }
@@ -125,7 +128,8 @@ void printList(node *head)
     node *current = head;
     while (current != NULL)
     {
-        printf("Byte: %d, Frequency: %d\n", current->byte, current->freq);
+        printf("Byte: %d, Frequency: %d\n", (uint8_t)current->byte,
+               current->freq);
         current = current->next;
     }
 }
@@ -161,7 +165,9 @@ node *binaryTree(node *head)
 
         /* combine first two elements into merged node and assign the nodes as
          * children*/
-        merge = createNode(0, (current->freq + previous->freq));
+        /* Magic Number "-1" is used to give merged number a smaller value for
+         * Tiebraker that is not a valid byte in the file*/
+        merge = createNode((-1), (current->freq + previous->freq));
         merge->left_ch = previous;
         merge->right_ch = current;
 
@@ -217,7 +223,9 @@ void populateHTable(node *root, h_table_entry **h_table,
     /* check if current node is a leaf and if so add to hash table*/
     if (!root->left_ch && !root->right_ch)
     {
-        h_table[*index]->byte = root->byte;
+        /* typcast to uint8_t for beacuse int was only used to sort in merged
+         * nodes*/
+        h_table[*index]->byte = (uint8_t)root->byte;
         strcpy(h_table[*index]->encoding, path);
         (*index)++;
     }
@@ -391,7 +399,7 @@ void writeBitBitstream(bitstream *bs, uint8_t bit)
 void generateEncoding(int input_fd, int output_fd, h_table_entry **h_lookup,
                       int num_entries, bitstream *bs)
 {
-    /* index variables ->c_index = current to read character position and 
+    /* index variables ->c_index = current to read character position and
      * d_index = current encoding position*/
     int c_index;
     int d_index;

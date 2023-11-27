@@ -45,6 +45,12 @@
 #define PREFIX_SIZE 155
 #define PADDING_SIZE 12
 
+/* some defines to clear out magic numbers in my program*/
+/* taken from specification and my way of handling things*/
+#define USRNAME_LENGTH 8
+#define GRPNAME_LENGTH 8
+#define DISPLAYNAME_LENGTH 17
+
 /* command line options to be available in every function*/
 extern int verbose;
 extern int create;

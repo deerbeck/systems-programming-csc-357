@@ -9,6 +9,9 @@ void list_tar(char **shopping_list, int tar_filedes, int num_paths)
     int num_data_blocks;
     char full_name[PATH_LENGTH];
 
+    /* end of archive flag*/
+    int end_of_archive = 0;
+
     /* loop index*/
     int i;
 
@@ -31,12 +34,32 @@ void list_tar(char **shopping_list, int tar_filedes, int num_paths)
             fprintf(stderr, "Error extracting Header Data. Skipping...\n");
             continue;
         }
+
         if (!validate_header(header_struct))
         {
-            fprintf(stderr, "Header not valid. I give up...\n");
-            /* free header_struct*/
-            free(header_struct);
-            exit(EXIT_FAILURE);
+            /* we may have hit the end of the archive*/
+            if (end_of_archive == 0)
+            {
+                end_of_archive = 1;
+                continue;
+            }
+            /* now if checksum is only the space values we know we hit another
+             * \0 block*/
+            else if (end_of_archive &&
+                     (calc_checksum(header_struct) == (CHKSUM_SIZE * ' ')))
+            {
+                /* now check the data if it is all 0*/
+                break;
+            }
+            else
+            {
+                /* we actually hit a bad header if it is not all \0*/
+
+                fprintf(stderr, "Header not valid. I give up...\n");
+                /* free header_struct*/
+                free(header_struct);
+                exit(EXIT_FAILURE);
+            }
         }
 
         /* extract number of data blocks to skip to read next header
@@ -76,11 +99,6 @@ void list_tar(char **shopping_list, int tar_filedes, int num_paths)
 
         /* free header_struct*/
         free(header_struct);
-        /* check if end of archive is reached and end*/
-        if (check_archive_end(tar_filedes))
-        {
-            break;
-        }
     }
 }
 
@@ -144,31 +162,31 @@ void print_permissions(mode_t mode)
 void print_owner_group(Header *header_struct)
 {
     /* buffer strings to store user and owner in*/
-    /* 8/17 is length from specification but we need 1 more for each to account
-     * for \0 character*/
-    char owner[9];
-    char group[9];
-    char result[18];
+    /* length is taken from sepcification + 1 for '\0' character I chose to
+     * truncate my names but have both at a max length of max 8*/
+    char owner[USRNAME_LENGTH + 1];
+    char group[GRPNAME_LENGTH + 1];
+    char result[DISPLAYNAME_LENGTH + 1];
 
-    /* pls don't judge, I like clean data*/
-    memset(owner, '\0', 9);
-    memset(group, '\0', 9);
-    memset(result, '\0', 18);
+    /* please don't judge, I like clean data*/
+    memset(owner, '\0', USRNAME_LENGTH + 1);
+    memset(group, '\0', GRPNAME_LENGTH + 1);
+    memset(result, '\0', DISPLAYNAME_LENGTH + 1);
 
-    /* check if username is stored and if not put out uid*/
+    /* check if username is stored and if not print out uid*/
     if (strlen(header_struct->uname) > 0)
     {
-        strncpy(owner, header_struct->uname, 8);
+        strncpy(owner, header_struct->uname, USRNAME_LENGTH);
     }
     else
     {
         sprintf(owner, "%7d",
                 (int)strtol(header_struct->uid, NULL, OCTALFLAG));
     }
-    /* check if group name is stored and if not put out gid*/
+    /* check if group name is stored and if not print out gid*/
     if (strlen(header_struct->gname) > 0)
     {
-        strncpy(group, header_struct->gname, 8);
+        strncpy(group, header_struct->gname, GRPNAME_LENGTH);
     }
     else
     {
@@ -180,6 +198,7 @@ void print_owner_group(Header *header_struct)
     strcpy(result, owner);
     strcat(result, "/");
     strcat(result, group);
+    /* 17 is from the specification*/
     printf("%-17s", result);
 }
 

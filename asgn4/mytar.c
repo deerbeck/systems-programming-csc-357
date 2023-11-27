@@ -63,14 +63,16 @@ int main(int argc, char *argv[])
         /* open tar file according to command line arguments*/
         if (create)
         {
-            if (argc < 4)
-            {
-                fprintf(stderr, "Please provide path.\n");
-                exit(EXIT_FAILURE);
-            }
             /* open for writing & truncating if in create mode*/
             tar_filedes = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC,
                                S_IRWXU | S_IRWXG);
+            if (argc < 4)
+            {
+                fprintf(stderr,
+                        "Please provide path to archive.\n");
+                exit(EXIT_FAILURE);
+            }
+
             if (tar_filedes == -1)
             {
                 perror(argv[2]);
@@ -94,7 +96,9 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
-
+    /* I allow the create/listing/extracting arguments to be present
+     * simultaneously because i prioritize creating over listing over
+     * extracting*/
     if (create)
     {
         /* 4 is the number of arguments before the pathnames start -> index 3*/

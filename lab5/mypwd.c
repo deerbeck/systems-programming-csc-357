@@ -120,6 +120,13 @@ int main(int argc, char *argv[])
                 break;
             }
         }
+        /* check if directory maybe unlinked (it wasn't found in the
+         * direntries) --> current entry is empty*/
+        if(current_entry == NULL)
+        {
+            fprintf(stderr, "Cannot get current working directory.");
+            exit(EXIT_FAILURE);
+        }
 
         /* close direcotry*/
         if (closedir(current_dirp) == -1)
@@ -142,9 +149,3 @@ int main(int argc, char *argv[])
     free(path_name);
     return 0;
 }
-
-/* start at where you're at --> go 1 derectory up ("..") --> look for which
- direntry has the same i node as where you came from --> get the d_name from
- that entry --> put it in path_max (at the end maybe or concatenate or
- something) --> change direcotry to where you are right now with chdir --> do
- the same thing again until you hit root (inode is the same)*/

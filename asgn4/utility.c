@@ -116,6 +116,10 @@ unsigned int calc_checksum(Header *header_struct)
     {
         checksum += (unsigned char)header_struct->prefix[i];
     }
+    for (i = 0; i < PADDING_SIZE; i++)
+    {
+        checksum += (unsigned char)header_struct->padding[i];
+    }
     return checksum;
 }
 
@@ -128,18 +132,17 @@ int validate_header(Header *header_struct)
     /* used for unstrict checking*/
     char magic_buf_unstrict[MAGIC_SIZE];
     memcpy(magic_buf_unstrict, header_struct->magic, MAGIC_SIZE);
+    
     /* set last char to nul termination to fit unstrict mode*/
     magic_buf_unstrict[MAGIC_SIZE - 1] = '\0';
 
     /* always check chksum and 5 characters of ustar*/
     if (chcksum_calc != chcksum_stored)
     {
-        fprintf(stderr, "Checksum not valid.\n");
         return 0;
     }
     else if (strcmp(magic_buf_unstrict, "ustar"))
     {
-        fprintf(stderr, "Magic not valid.\n");
         return 0;
     }
 

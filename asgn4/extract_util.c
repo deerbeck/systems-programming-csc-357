@@ -15,6 +15,7 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
     char full_name[PATH_LENGTH];
 
     int path_found_flag;
+    int end_of_archive = 0;
     int i, j;
 
     while ((bytes_read = read(tar_filedes, header_data, BLOCK_SIZE)) != 0)
@@ -37,10 +38,32 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
             fprintf(stderr, "Error extracting Header Data. Skipping...\n");
             continue;
         }
+
         if (!validate_header(header_struct))
         {
-            fprintf(stderr, "Header not valid. I give up...\n");
-            exit(EXIT_FAILURE);
+            /* we may have hit the end of the archive*/
+            if (end_of_archive == 0)
+            {
+                end_of_archive = 1;
+                continue;
+            }
+            /* now if checksum is only the space values we know we hit another
+             * \0 block*/
+            else if (end_of_archive &&
+                     (calc_checksum(header_struct) == (CHKSUM_SIZE * ' ')))
+            {
+                /* now check the data if it is all 0*/
+                break;
+            }
+            else
+            {
+                /* we actually hit a bad header if it is not all \0*/
+
+                fprintf(stderr, "Header not valid. I give up...\n");
+                /* free header_struct*/
+                free(header_struct);
+                exit(EXIT_FAILURE);
+            }
         }
 
         /* get full name to check for pathname and for later printing*/
@@ -208,11 +231,6 @@ void extract_archive(char **shopping_list, int tar_filedes, int num_paths)
 
         /* free header_struct*/
         free(header_struct);
-        /* check if end of archive is reached and end*/
-        if (check_archive_end(tar_filedes))
-        {
-            break;
-        }
     }
 }
 

@@ -153,7 +153,7 @@ Header *create_header(const char *pathname, struct stat stat_struct)
             /* name can not be split*/
             if (!split_pos)
             {
-                fprintf(stderr, "%s couldn't be split at '/'\n", path_buffer);
+                fprintf(stderr, "%s couldn't be split at '/'. ", path_buffer);
                 return NULL;
             }
         }
@@ -213,10 +213,28 @@ Header *create_header(const char *pathname, struct stat stat_struct)
     /* store linkname*/
     if (S_ISLNK(stat_struct.st_mode))
     {
-        if (readlink(path_buffer, header_struct->linkname,
+        /* buffer for linkname to check length*/
+        /* Plus 2 more to fit NUL Character for checking if linkname is too
+         * long*/
+        char linkname_buf[LINKNAME_SIZE + 2];
+        memset(linkname_buf, '\0', LINKNAME_SIZE + 2);
+
+        if (readlink(path_buffer, linkname_buf,
                      LINKNAME_SIZE) == -1)
         {
-            fprintf(stderr, "Can not read link. Skipping...");
+            fprintf(stderr, "Can not read link. ");
+            return NULL;
+        }
+        /*name doesn't fit so skip the file*/
+        if (strlen(linkname_buf) > 100)
+        {
+            fprintf(stderr, "Linkname too long. ");
+            return NULL;
+        }
+        /*name fits so put it in there*/
+        else
+        {
+            memcpy(header_struct->linkname, linkname_buf, LINKNAME_SIZE);
         }
     }
 
@@ -249,12 +267,12 @@ Header *create_header(const char *pathname, struct stat stat_struct)
         strncpy(header_struct->gname, grp->gr_name, GNAME_SIZE);
     }
 
-    /* get major devnumber*/
-    sprintf(header_struct->devmajor, "%07o",
-            (unsigned int)major(stat_struct.st_dev));
-    /* get minor devnumber*/
-    sprintf(header_struct->devminor, "%07o",
-            (unsigned int)minor(stat_struct.st_dev));
+    /* get major devnumber (we are not looking at devife special files so fill
+     * the field with null)*/
+    memset(header_struct->devmajor, '\0', DEVMAJOR_SIZE);
+    /* get major devnumber (we are not looking at devife special files so fill
+     * the field with null)*/
+    memset(header_struct->devminor, '\0', DEVMINOR_SIZE);
 
     /* finaly calculate the checksum*/
     checksum = calc_checksum(header_struct);

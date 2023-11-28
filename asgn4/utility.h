@@ -50,6 +50,7 @@
 #define USRNAME_LENGTH 8
 #define GRPNAME_LENGTH 8
 #define DISPLAYNAME_LENGTH 17
+#define MAXOCTAL 07777777
 
 /* command line options to be available in every function*/
 extern int verbose;

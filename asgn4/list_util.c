@@ -174,14 +174,47 @@ void print_owner_group(Header *header_struct)
     memset(result, '\0', DISPLAYNAME_LENGTH + 1);
 
     /* check if username is stored and if not print out uid*/
+    /* if it is empty it is filled with \0
+     * --> strlen > 0*/
     if (strlen(header_struct->uname) > 0)
     {
         strncpy(owner, header_struct->uname, USRNAME_LENGTH);
     }
     else
     {
-        sprintf(owner, "%7d",
-                (int)strtol(header_struct->uid, NULL, OCTALFLAG));
+        /* check if saved as a binary number (but only in non strict mode)*/
+        if (header_struct->uid[0] == 0x80)
+        {
+            if (strict)
+            {
+                fprintf(stderr, "Can not get uid for listing.");
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+                /* string formating %7d to fill up string with leading
+                 * whitespaces*/
+                int buf_uid;
+                if ((buf_uid =
+                         extract_special_int(header_struct->uid,
+                                             UID_SIZE)) == -1)
+                {
+                    perror("extract_special_int");
+                    exit(EXIT_FAILURE);
+                }
+                else
+                {
+                    snprintf(owner, UID_SIZE, "%7d", buf_uid);
+                }
+            }
+        }
+        else
+        {
+            /* string formating %7d to fill up string with leading
+             * whitespaces*/
+            snprintf(owner, USRNAME_LENGTH, "%7d",
+                     (int)strtol(header_struct->uid, NULL, OCTALFLAG));
+        }
     }
     /* check if group name is stored and if not print out gid*/
     if (strlen(header_struct->gname) > 0)
@@ -190,8 +223,9 @@ void print_owner_group(Header *header_struct)
     }
     else
     {
-        sprintf(group, "%7d",
-                (int)strtol(header_struct->gid, NULL, OCTALFLAG));
+        /* string formating %7d to fill up string with leading whitespaces*/
+        snprintf(group, GRPNAME_LENGTH, "%7d",
+                 (int)strtol(header_struct->gid, NULL, OCTALFLAG));
     }
 
     /* copy to result and print out in the end*/

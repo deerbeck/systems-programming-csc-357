@@ -30,58 +30,27 @@ void archive_file(const char *pathname, int tar_filedes)
         printf("%s\n", path_buffer);
     }
 
-    /* write file to archive*/
+    /* create header will be checked later and reacted accordingly (skip file
+     * and keep traversing for directory)*/
     Header *header_struct = create_header(path_buffer, stat_buf);
 
-    /* if null continue to next file*/
-    if (!header_struct)
-    {
-        fprintf(stderr, "Skipping...\n");
-        return;
-    }
-    /* write header to data*/
-    /* because of packing attribute i can directly write the struct*/
-    write(tar_filedes, header_struct, sizeof(Header));
-
-    /* free header because of no more use while writing*/
-    free(header_struct);
-
-    /* now onto the contents of regular files file*/
-    if (S_ISREG(stat_buf.st_mode))
-    {
-        int data_filedes = open(path_buffer, O_RDONLY);
-        if (data_filedes == -1)
-        {
-            fprintf(stderr, "%s could not be opened. Skipping...",
-                    path_buffer);
-            return;
-        }
-
-        ssize_t bytes_read;
-        char write_buffer[BLOCK_SIZE];
-        /*set buffer to \0 this takes care of the \0 padding*/
-        memset(write_buffer, '\0', BLOCK_SIZE);
-        while ((bytes_read =
-                    read(data_filedes, write_buffer, BLOCK_SIZE)) != 0)
-        {
-            if (bytes_read == -1)
-            {
-                fprintf(stderr, "Read error. Skipping...");
-                return;
-            }
-            if (write(tar_filedes, write_buffer, BLOCK_SIZE) == -1)
-            {
-                fprintf(stderr, "Write error. Skipping...");
-                return;
-            }
-
-            /*reset buffer this takes care of the 0 padding*/
-            memset(write_buffer, '\0', BLOCK_SIZE);
-        }
-    }
     /* check if direcotry and traverse down accordingly*/
     if (S_ISDIR(stat_buf.st_mode))
     {
+        /* if null skip writing the header*/
+        if (!header_struct)
+        {
+            fprintf(stderr, "Skipping...\n");
+        }
+        else
+        {
+            /* write header to data*/
+            /* because of packing attribute i can directly write the struct*/
+            write(tar_filedes, header_struct, sizeof(Header));
+
+            /* free header because of no more use while writing*/
+            free(header_struct);
+        }
         /* open directory to get its entries*/
         current_dir = opendir(path_buffer);
         if (!current_dir)
@@ -116,6 +85,52 @@ void archive_file(const char *pathname, int tar_filedes)
         {
             perror("closedir");
             exit(EXIT_FAILURE);
+        }
+    }
+    /*now onto the contents of regular files file */
+    if (S_ISREG(stat_buf.st_mode))
+    {
+        /* if null continue to next file*/
+        if (!header_struct)
+        {
+            fprintf(stderr, "Skipping...\n");
+            return;
+        }
+        /* write header to data*/
+        /* because of packing attribute i can directly write the struct*/
+        write(tar_filedes, header_struct, sizeof(Header));
+
+        /* free header because of no more use while writing*/
+        free(header_struct);
+
+        int data_filedes = open(path_buffer, O_RDONLY);
+        if (data_filedes == -1)
+        {
+            fprintf(stderr, "%s could not be opened. Skipping...",
+                    path_buffer);
+            return;
+        }
+
+        ssize_t bytes_read;
+        char write_buffer[BLOCK_SIZE];
+        /*set buffer to \0 this takes care of the \0 padding*/
+        memset(write_buffer, '\0', BLOCK_SIZE);
+        while ((bytes_read =
+                    read(data_filedes, write_buffer, BLOCK_SIZE)) != 0)
+        {
+            if (bytes_read == -1)
+            {
+                fprintf(stderr, "Read error. Skipping...");
+                return;
+            }
+            if (write(tar_filedes, write_buffer, BLOCK_SIZE) == -1)
+            {
+                fprintf(stderr, "Write error. Skipping...");
+                return;
+            }
+
+            /*reset buffer this takes care of the 0 padding*/
+            memset(write_buffer, '\0', BLOCK_SIZE);
         }
     }
 }
@@ -178,27 +193,61 @@ Header *create_header(const char *pathname, struct stat stat_struct)
 
     /* saving the mode print into mode array and strip of filetype*/
     /* 07777 is mask to only safe last 4 octal digits of mode_t*/
-    sprintf(header_struct->mode, "%07o", (stat_struct.st_mode & MODEMASK));
+    /* string formating %07o to fill up string with leading zeros*/
+    snprintf(header_struct->mode, MODE_SIZE,
+             "%07o", (stat_struct.st_mode & MODEMASK));
 
     /* next up is the uid and gid of the file*/
-    sprintf(header_struct->uid, "%07o", (unsigned int)stat_struct.st_uid);
-    sprintf(header_struct->gid, "%07o", (unsigned int)stat_struct.st_gid);
+    /* check size of octal number if it is bigger than 07777777 (MAXOCTAL) it
+     * does not fit in the string -> write it as a binary number*/
+    if (stat_struct.st_uid > MAXOCTAL)
+    {
+        /* if strict skip it*/
+        if (strict)
+        {
+            fprintf(stderr, "Octal UID does not fit in Header. ");
+            return NULL;
+        }
+        /* if not fit it as a binary*/
+        else
+        {
+            if (insert_special_int(header_struct->uid, UID_SIZE,
+                                   stat_struct.st_uid) != 0)
+            {
+                return NULL;
+            }
+        }
+    }
+    else
+    {
+        /* string formating %07o to fill up string with leading zeros*/
+        snprintf(header_struct->uid, UID_SIZE, "%07o",
+                 (unsigned int)stat_struct.st_uid);
+    }
+
+    /* write gid*/
+    /* string formating %07o to fill up string with leading zeros*/
+    snprintf(header_struct->gid, GID_SIZE, "%07o",
+             (unsigned int)stat_struct.st_gid);
 
     /* size of regular file*/
     if (S_ISREG(stat_struct.st_mode))
     {
-        sprintf(header_struct->size, "%011o",
-                (unsigned int)stat_struct.st_size);
+        /* string formating %011o to fill up string with leading zeros*/
+        snprintf(header_struct->size, SIZE_SIZE, "%011o",
+                 (unsigned int)stat_struct.st_size);
     }
     /* for DIR and SYMLINNK size is 0*/
     else
     {
-        sprintf(header_struct->size, "%011o",
-                (unsigned int)0);
+        /* string formating %011o to fill up string with leading zeros*/
+        snprintf(header_struct->size, SIZE_SIZE, "%011o",
+                 (unsigned int)0);
     }
     /* last modified time of file*/
-    sprintf(header_struct->mtime, "%011o",
-            (unsigned int)stat_struct.st_mtime);
+    /* string formating %011o to fill up string with leading zeros*/
+    snprintf(header_struct->mtime, MTIME_SIZE, "%011o",
+             (unsigned int)stat_struct.st_mtime);
 
     /* checksum will be handled later!!*/
 
@@ -217,6 +266,7 @@ Header *create_header(const char *pathname, struct stat stat_struct)
         /* Plus 2 more to fit NUL Character for checking if linkname is too
          * long*/
         char linkname_buf[LINKNAME_SIZE + 2];
+        /* me loves the clean data*/
         memset(linkname_buf, '\0', LINKNAME_SIZE + 2);
 
         if (readlink(path_buffer, linkname_buf,
@@ -239,7 +289,8 @@ Header *create_header(const char *pathname, struct stat stat_struct)
     }
 
     /* store magic "ustar"*/
-    strncpy(header_struct->magic, "ustar", MAGIC_SIZE);
+    /* writing the null character to make it visible*/
+    memcpy(header_struct->magic, "ustar\0", MAGIC_SIZE);
 
     /* store '00' version*/
     header_struct->version[0] = '0';
@@ -267,17 +318,13 @@ Header *create_header(const char *pathname, struct stat stat_struct)
         strncpy(header_struct->gname, grp->gr_name, GNAME_SIZE);
     }
 
-    /* get major devnumber (we are not looking at devife special files so fill
-     * the field with null)*/
-    memset(header_struct->devmajor, '\0', DEVMAJOR_SIZE);
-    /* get major devnumber (we are not looking at devife special files so fill
-     * the field with null)*/
-    memset(header_struct->devminor, '\0', DEVMINOR_SIZE);
-
+    /* major and minor devnumber are left with nul because we are not looking
+     * at device special files*/
     /* finaly calculate the checksum*/
     checksum = calc_checksum(header_struct);
     /* finaly write checksum*/
-    sprintf(header_struct->chksum, "%07o", checksum);
+    /* string formating %07o to fill up string with leading zeros*/
+    snprintf(header_struct->chksum, CHKSUM_SIZE, "%07o", checksum);
 
     return header_struct;
 }

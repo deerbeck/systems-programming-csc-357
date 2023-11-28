@@ -60,9 +60,19 @@ unsigned int calc_checksum(Header *header_struct)
     {
         checksum += (unsigned char)header_struct->mode[i];
     }
-    for (i = 0; i < UID_SIZE; i++)
+
+    /* return 0 (invalid checksum because it is at least 8* spaces) to signal
+     * an invalid header*/
+    if (strict && header_struct->uid[0] == 0x80)
     {
-        checksum += (unsigned char)header_struct->uid[i];
+        return 0;
+    }
+    else
+    {
+        for (i = 0; i < UID_SIZE; i++)
+        {
+            checksum += (unsigned char)header_struct->uid[i];
+        }
     }
     for (i = 0; i < GID_SIZE; i++)
     {
@@ -132,7 +142,7 @@ int validate_header(Header *header_struct)
     /* used for unstrict checking*/
     char magic_buf_unstrict[MAGIC_SIZE];
     memcpy(magic_buf_unstrict, header_struct->magic, MAGIC_SIZE);
-    
+
     /* set last char to nul termination to fit unstrict mode*/
     magic_buf_unstrict[MAGIC_SIZE - 1] = '\0';
 

@@ -1,1 +1,7 @@
-{}
+{
+    "C_Cpp.errorSquiggles": "enabled",
+    "files.associations": {
+        "netdb.h": "c",
+        "socket.h": "c"
+    }
+}

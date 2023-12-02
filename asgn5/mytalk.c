@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Getting the hostname and port
+    /* Getting the hostname and port*/
     if (optind < argc - 1)
     {
         hostname = argv[optind];
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
         struct sockaddr_in serv_addr;
         struct hostent *hostent;
         ssize_t client_message_len;
-        char client_buffer[BUFFER_SIZE + 1];
+        char client_buffer[BUFFER_SIZE];
 
         /* who are we talking to*/
         hostent = gethostbyname(hostname);
@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
             perror("connect");
             exit(EXIT_FAILURE);
         }
+
         /* we are hopefully connected*/
         /* waiting to connect*/
         printf("Waiting for response from %s.\n", hostent->h_name);
@@ -106,20 +107,27 @@ int main(int argc, char *argv[])
 
         /* send out username to host*/
         snprintf(client_buffer, BUFFER_SIZE, "%s", pw_struct->pw_name);
+        /* len plus one to include '\0' character*/
         if (send(sockfd,
-                 client_buffer, strlen(client_buffer), 0) == -1)
+                 client_buffer, strlen(client_buffer) + 1, 0) == -1)
         {
             perror("send");
             exit(EXIT_FAILURE);
         }
 
         /* recieve response from host*/
-        if ((client_message_len = read(sockfd,
-                                       client_buffer, BUFFER_SIZE)) == -1)
+        /* len of buffer -1 to fit \0*/
+        client_message_len = recv(sockfd,
+                                  client_buffer,
+                                  sizeof(client_buffer) - 1, 0);
+        if ((client_message_len) == -1)
         {
-            perror("read");
+            perror("recv");
             exit(EXIT_FAILURE);
         }
+        /* put Nul character */
+        client_buffer[client_message_len] = '\0';
+
         /* if not ok host declined connection*/
         if (strcmp(client_buffer, "ok"))
         {
@@ -134,6 +142,7 @@ int main(int argc, char *argv[])
 
         /* else we can chat*/
         chat(sockfd);
+        /* closing not really needed because exit takes care of it*/
         close(sockfd);
     }
 
@@ -144,10 +153,8 @@ int main(int argc, char *argv[])
         /* initialize variables*/
         int sockfd, newsockfd;
         socklen_t len;
-        char server_buffer[BUFFER_SIZE + 1];
+        char server_buffer[BUFFER_SIZE];
         ssize_t server_message_len;
-        /* set buffer to \0*/
-        memset(server_buffer, '\0', BUFFER_SIZE);
 
         /* using sockaddr_in to work with ip4 protocoll more conveniently*/
         struct sockaddr_in serv_addr, cli_info, peer_info;
@@ -180,6 +187,11 @@ int main(int argc, char *argv[])
             perror("listen");
             exit(EXIT_FAILURE);
         }
+        /* verbose stuff*/
+        if(v_flag)
+        {
+            printf("Waiting for connection...\n");
+        }
 
         /* get new socket for client so server can keep listening*/
         len = sizeof(peer_info);
@@ -200,64 +212,75 @@ int main(int argc, char *argv[])
             perror("getsockname");
             exit(EXIT_FAILURE);
         }
-        /*get info about new local socket and connected peer*/
-        inet_ntop(AF_INET, &cli_info.sin_addr.s_addr,
-                  cli_addr, sizeof(cli_addr));
-        inet_ntop(AF_INET, &peer_info.sin_addr.s_addr,
-                  peer_addr, sizeof(peer_addr));
+
         if (v_flag)
         {
+            /*get info about new local socket and connected peer*/
+            inet_ntop(AF_INET, &cli_info.sin_addr.s_addr,
+                      cli_addr, sizeof(cli_addr));
+            inet_ntop(AF_INET, &peer_info.sin_addr.s_addr,
+                      peer_addr, sizeof(peer_addr));
             printf("New Connection: %s:%d->%s:%d\n",
                    peer_addr, ntohs(peer_info.sin_port),
                    cli_addr, ntohs(cli_info.sin_port));
         }
 
-        if (!a_flag)
+        /* recieve username from client*/
+        /* len of buffer -1 to fit \0*/
+        server_message_len = recv(newsockfd,
+                                  server_buffer,
+                                  sizeof(server_buffer) - 1, 0);
+
+        if (server_message_len == -1)
         {
-            /* recieve username from client*/
-            server_message_len = read(newsockfd,
-                                      server_buffer, BUFFER_SIZE - 1);
-            /*debugging*/
-            if (v_flag)
-            {
-                printf("Peer username: %s\n", server_buffer);
-            }
+            perror("recv");
+            exit(EXIT_FAILURE);
+        }
 
-            if (server_message_len == -1)
-            {
-                perror("read");
-                exit(EXIT_FAILURE);
-            }
-            /* get hostname of peer*/
-            struct sockaddr_storage addr;
-            socklen_t addr_len = sizeof(addr);
-            char host[NI_MAXHOST], service[NI_MAXSERV];
+        /* null terminate message*/
+        server_buffer[server_message_len] = '\0';
 
-            if (getpeername(newsockfd,
-                            (struct sockaddr *)&addr, &addr_len) == -1)
-            {
-                perror("getpeername");
-                exit(EXIT_FAILURE);
-            }
-            if (getnameinfo((struct sockaddr *)&addr, addr_len, host,
-                            NI_MAXHOST, service, NI_MAXSERV, 0))
-            {
-                perror("getnameinfo");
-                exit(EXIT_FAILURE);
-            }
+        /*debugging*/
+        if (v_flag)
+        {
+            printf("Peer username: %s\n", server_buffer);
+        }
 
-            else
+        /* get hostname of peer*/
+        struct sockaddr_storage addr;
+        socklen_t addr_len = sizeof(addr);
+        char host[NI_MAXHOST], service[NI_MAXSERV];
+
+        if (getpeername(newsockfd,
+                        (struct sockaddr *)&addr, &addr_len) == -1)
+        {
+            perror("getpeername");
+            exit(EXIT_FAILURE);
+        }
+        if (getnameinfo((struct sockaddr *)&addr, addr_len, host,
+                        NI_MAXHOST, service, NI_MAXSERV, 0))
+        {
+            perror("getnameinfo");
+            exit(EXIT_FAILURE);
+        }
+
+        else
+        {
+            if (!a_flag)
             {
                 /* ask user if he wants to accept the connection*/
-                printf("Mytalk request from %s@%s. Accept (y/n)?",
+                printf("Mytalk request from %s@%s. Accept (y/n)? ",
                        server_buffer, host);
-
                 memset(server_buffer, '\0', BUFFER_SIZE);
+
                 /* get answer from server user*/
                 scanf("%s", server_buffer);
+
+                /* check if yes or y and send ok or not ok package*/
                 if (!(strcasecmp(server_buffer, "yes") &&
                       strcasecmp(server_buffer, "y")))
                 {
+                    /* len plus one to include '\0' character*/
                     if (send(newsockfd, "ok",
                              strlen("ok") + 1, 0) == -1)
                     {
@@ -268,6 +291,7 @@ int main(int argc, char *argv[])
                 /* connection not accepted*/
                 else
                 {
+                    /* len plus one to include '\0' character*/
                     if (send(newsockfd, "not ok",
                              strlen("not ok") + 1, 0) == -1)
                     {
@@ -284,15 +308,33 @@ int main(int argc, char *argv[])
                     exit(EXIT_SUCCESS);
                 }
             }
+            /* else --> don't ask*/
+            else
+            {
+                /* len plus one to include '\0' character*/
+                if (send(newsockfd, "ok",
+                         strlen("ok") + 1, 0) == -1)
+                {
+                    perror("send");
+                    exit(EXIT_FAILURE);
+                }
+            }
         }
 
-        /* CONTINUE*/
         /* now chat! */
         chat(newsockfd);
 
-        /* closed connection*/;
-        close(newsockfd);
-        close(sockfd);
+        /* close connection*/;
+        if (close(newsockfd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
         }
+        if (close(sockfd) == -1)
+        {
+            perror("close");
+            exit(EXIT_FAILURE);
+        }
+    }
     return 0;
 }

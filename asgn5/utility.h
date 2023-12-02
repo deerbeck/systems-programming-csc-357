@@ -20,6 +20,8 @@
 
 #include "Talk/talk.h"
 
+#include <talk.h>
+
 /* global variables for command line options*/
 extern int v_flag;
 extern int a_flag;
@@ -32,7 +34,7 @@ extern int N_flag;
 #define LOCAL 0
 #define REMOTE (LOCAL + 1)
 
-/* Helper function to outsource the chat functionality on the client side*/
+/* Helper function to outsource the chat functionality*/
 void chat(int sockfd);
 
 #endif

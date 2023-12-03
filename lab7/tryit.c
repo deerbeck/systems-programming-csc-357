@@ -29,9 +29,8 @@ int main(int argc, char *argv[])
     else if (child == 0)
     {
         // child
-
         // do stuff my child
-        execl(argv[1], argv[1], NULL);
+        execlp(argv[1], argv[1], (char *)NULL);
 
         // we only land here if execl fails
         perror(argv[1]);
@@ -59,7 +58,7 @@ int main(int argc, char *argv[])
                 printf("Process %d exited with an error value.\n", child);
             }
 
-            // go as our child did go
+            // go the same as our child did go
             exit(WEXITSTATUS(status));
         }
         else

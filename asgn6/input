@@ -1,0 +1,6 @@
+sleep 2
+cat
+ls
+ls
+exit
+ls

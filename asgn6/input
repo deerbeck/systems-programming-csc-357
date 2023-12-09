@@ -1,5 +1,5 @@
 sleep 2
-cat
+fd gfc
 ls
 ls
 exit

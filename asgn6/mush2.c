@@ -1,8 +1,8 @@
 #include "utility.h"
-
+#include <signal.h>
 // used for getopt (debug)
 extern int optind, optopt, opterr;
-extern int h_errno;
+extern int errno;
 
 int main(int argc, char *argv[])
 {
@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     char *infile;
     // default input is sdtin
     FILE *input = stdin;
+
     // batch processing
     if (optind == (argc - 1))
     {
@@ -34,8 +35,6 @@ int main(int argc, char *argv[])
             perror("input");
             exit(EXIT_FAILURE);
         }
-        // intruduce b_processing signal_handler
-        signal(SIGINT, sigintHandlerBatch);
     }
 
     // init variables
@@ -43,17 +42,36 @@ int main(int argc, char *argv[])
     int j;
     int status;
     int stages;
-    // introduce signal handler to parent
-    sigset_t new_mask, old_mask;
 
-    // let the shell run as long as exit or SIGINT
+    // introduce signal handler
+    sigset_t new_mask, old_mask;
+    struct sigaction sa;
+    if (sigemptyset(&sa.sa_mask) == -1)
+    {
+        perror("sigemptyset");
+        exit(EXIT_FAILURE);
+    }
+    sa.sa_flags = 0;
+
+    // install appropriate signalhandler
+    if (b_processing)
+    {
+        sa.sa_handler = sigintHandlerBatch;
+    }
+    else
+    {
+        sa.sa_handler = sigintHandlerInteractive;
+    }
+
+    if (sigaction(SIGINT, &sa, NULL) == -1)
+    {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    // let the shell run as long as exit or ^D
     while (1)
     {
-        // install command handler#
-        if (!b_processing)
-        {
-            signal(SIGINT, sigintHandlerCommand);
-        }
         // if so parse a command line
         pipeline p_line = get_command(input);
 
@@ -63,15 +81,17 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        // install execute handler
-        if (!b_processing)
-        {
-            signal(SIGINT, sigintHandlerExecute);
-        }
-
         // Block SIGINT until children are sent out to the world
-        sigemptyset(&new_mask);
-        sigaddset(&new_mask, SIGINT);
+        if (sigemptyset(&new_mask) == -1)
+        {
+            perror("sigemptyset");
+            exit(EXIT_FAILURE);
+        }
+        if (sigaddset(&new_mask, SIGINT) == -1)
+        {
+            perror("sigaddset");
+            exit(EXIT_FAILURE);
+        }
         // Block SIGINT using sigprocmask
         if (sigprocmask(SIG_BLOCK, &new_mask, &old_mask) == -1)
         {
@@ -104,40 +124,30 @@ int main(int argc, char *argv[])
             {
                 // if no path provided use env value
                 dest = getenv("HOME");
+                if (!dest)
+                {
+                    // inform the user
+                    fprintf(stderr, "No value for HOME in PATH.\n");
+                }
             }
-            if (!dest)
+            // chdir if destination is valid
+            if (dest)
             {
-                // inform the user
-                fprintf(stderr, "No value for HOME in PATH.\n");
+                // verbose
+                if (v_flag >= 3)
+                {
+                    fprintf(stderr, "Attempting to cd to \"%s\"\n", dest);
+                }
+                
+                if (chdir(dest) == -1)
+                {
+                    perror(dest);
+                }
             }
 
-            // verbose
-            if (v_flag >= 3)
-            {
-                fprintf(stderr, "Attempting to cd to \"%s\"\n", dest);
-            }
+            // cleanup SIGINT and memory
+            cleanup(old_mask, p_line);
 
-            // finally chdir
-            if (chdir(dest) == -1)
-            {
-                perror(dest);
-            }
-
-            // unblock SIGINT
-            // Restore the previous signal mask
-            if (sigprocmask(SIG_SETMASK, &old_mask, NULL) == -1)
-            {
-                perror("sigprocmask");
-                exit(EXIT_FAILURE);
-            }
-            if (v_flag >= 2)
-            {
-                fprintf(stderr,
-                        "SIGINT unblocked (pid = %d). \n", getpid());
-            }
-            // free those pointers
-            free(p_line->cline);
-            free_pipeline(p_line);
             continue;
         }
 
@@ -182,6 +192,7 @@ int main(int argc, char *argv[])
         }
         // get our children (as many as length says us to get)
         pid_t children[stages];
+        int num_children = 0;
         for (i = 0; i < stages; i++)
         {
 
@@ -196,9 +207,6 @@ int main(int argc, char *argv[])
                     fprintf(stderr,
                             "SIGINT blocked. (pid = %d) \n", getpid());
                 }
-                // install default signalHandler
-                signal(SIGINT, sigintHandlerChild);
-
                 /* we know child copies memory --> index of for loop is stage
                  * of pipeline */
                 // child, lets do stuff
@@ -256,6 +264,7 @@ int main(int argc, char *argv[])
                         }
                     }
                 }
+
                 // unblock SIGINT
                 // Restore the previous signal mask
                 if (sigprocmask(SIG_SETMASK, &old_mask, NULL) == -1)
@@ -268,6 +277,7 @@ int main(int argc, char *argv[])
                     fprintf(stderr,
                             "SIGINT unblocked (pid = %d). \n", getpid());
                 }
+
                 // first handle IO redirection
                 if (p_line->stage[i].inname)
                 {
@@ -333,21 +343,19 @@ int main(int argc, char *argv[])
                 perror(p_line->stage[i].argv[0]);
                 _exit(EXIT_FAILURE);
             }
+            // fork failed (child did not launch)
+            else if(children[i] == -1)
+            {
+                // just report back and try to launch rest of children
+                perror("fork");
+                continue;
+            }
+            // increment count (only if successful child launch)
+            num_children ++;
         }
 
-        // unblock the parent
-        // unblock SIGINT
-        // Restore the previous signal mask
-        if (sigprocmask(SIG_SETMASK, &old_mask, NULL) == -1)
-        {
-            perror("sigprocmask");
-            exit(EXIT_FAILURE);
-        }
-        if (v_flag >= 2)
-        {
-            fprintf(stderr,
-                    "SIGINT unblocked (pid = %d). \n", getpid());
-        }
+        // unblock and cleanup
+        cleanup(old_mask, p_line);
 
         // Parent
         // clean up pipes
@@ -366,13 +374,29 @@ int main(int argc, char *argv[])
             }
         }
         // wait for all children
-        for (i = 0; i < stages; i++)
+        i = 0;
+        while (i < num_children)
         {
             // wait for our children
-            if (waitpid(children[i], &status, 0) == -1)
+            if (wait(&status) == -1)
             {
-                perror("waitpid");
-                exit(EXIT_FAILURE);
+                // if wait got interrupted get back to waiting
+                if (errno == EINTR)
+                {
+
+                    if (v_flag >= 2)
+                    {
+                        fprintf(stderr,
+                                "Wait interrupted -> back to waiting\n");
+                    }
+                    errno = 0;
+                    continue;
+                }
+                else
+                {
+                    perror("wait");
+                    exit(EXIT_FAILURE);
+                }
             }
 
             //  verbose
@@ -401,14 +425,9 @@ int main(int argc, char *argv[])
                             children[i]);
                 }
             }
+            // increment the child count
+            i++;
         }
-
-        // TO DO free pipeline and command line string (pointer to it is in
-        // stored in pipeline)
-        free(p_line->cline);
-        free_pipeline(p_line);
-        // reset stages
-        stages = 0;
     }
     if (optind < argc - 1)
     {

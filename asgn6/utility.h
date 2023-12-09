@@ -33,14 +33,11 @@ extern int b_processing;
 // Signal handler function for SIGINT - Batch
 void sigintHandlerBatch(int sig_num);
 
-// Signal handler function for SIGINT - Command
-void sigintHandlerCommand(int sig_num);
-
-// Signal handler function for SIGINT - Execute
-void sigintHandlerExecute(int sig_num);
-
 // Signal handler function for SIGINT - Child
-void sigintHandlerChild(int sig_num);
+void sigintHandlerInteractive(int sig_num);
+
+// cleanup located in one function to make it look nicer
+void cleanup(sigset_t old_mask, pipeline p_line);
 
 // for debug purposes
 void print_open_fds(void);

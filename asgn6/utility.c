@@ -28,29 +28,32 @@ void sigintHandlerBatch(int sig_num)
     exit(EXIT_SUCCESS);
 }
 
-void sigintHandlerCommand(int sig_num)
+void sigintHandlerInteractive(int sig_num)
 {
     if (v_flag >= 2)
     {
         fprintf(stderr, "Caught signal 2 (Interrupt)\n");
     }
-    fprintf(stdout, "\n8-P ");
-    // force that prompt in there
+    fprintf(stdout, "\n");
     fflush(stdout);
 }
 
-void sigintHandlerExecute(int sig_num)
+void cleanup(sigset_t old_mask, pipeline p_line)
 {
+    // unblock SIGINT
+    // Restore the previous signal mask
+    if (sigprocmask(SIG_SETMASK, &old_mask, NULL) == -1)
+    {
+        perror("sigprocmask");
+        exit(EXIT_FAILURE);
+    }
     if (v_flag >= 2)
     {
-        fprintf(stderr, "Caught signal 2 (Interrupt)\n");
+        fprintf(stderr,
+                "SIGINT unblocked (pid = %d). \n", getpid());
     }
-}
-
-void sigintHandlerChild(int sig_num)
-{
-    // end childs life gracefully
-    _exit(EXIT_SUCCESS);
+    free(p_line->cline);
+    free_pipeline(p_line);
 }
 
 pipeline get_command(FILE *input)
@@ -59,20 +62,37 @@ pipeline get_command(FILE *input)
     if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO) && !b_processing)
     {
         fprintf(stdout, "8-P ");
+        fflush(stdout);
     }
-
     // get command line
     char *command = readLongString(input);
     if (!command)
     {
-        // EOF --> exit the shell
-        exit(EXIT_SUCCESS);
+        // if it got interrupted
+        if (ferror(input) && errno == EINTR)
+        {
+            // clear error flag and reset errno
+            clearerr(input);
+            errno = 0;
+            return NULL;
+        }
+        else if (feof(input))
+        {
+            // EOF --> exit the shell
+            exit(EXIT_SUCCESS);
+        }
+        // no EOF and no interrupt -> error doing stuff
+        else
+        {
+            perror("stdin");
+            exit(EXIT_FAILURE);
+        }
     }
 
     // crack the string into the pipeline
     pipeline p_line = crack_pipeline(command);
 
-    // check if valid pipeline (if not tell the user and get back)
+    // check if valid pipeline
     if (!p_line)
     {
         return NULL;
